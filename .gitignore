@@ -31,8 +31,13 @@ yarn-error.log*
 # env files
 .env*
 
-# scratch files
+# scratch & temporary files
 scratch_*.js
+walkthrough.md
+
+# local agent / IDE configs
+.agents
+.vscode
 
 # vercel
 .vercel
