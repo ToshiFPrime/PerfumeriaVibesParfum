@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   ADMIN_CONFIG,
-  verifyPassword,
+  verifyAdminPassword,
   createAdminSessionCookieValue,
 } from "@/lib/auth/password";
 
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
 
     // Verificar credenciales de Administrador con Bcrypt
     if (email === ADMIN_CONFIG.email) {
-      const isPasswordValid = await verifyPassword(password, ADMIN_CONFIG.passwordHash);
+      const isPasswordValid = await verifyAdminPassword(password);
 
       if (isPasswordValid) {
         const sessionValue = createAdminSessionCookieValue(email);

@@ -10,10 +10,7 @@ export function middleware(request: NextRequest) {
     let isValid = false;
     if (adminSessionCookie?.value) {
       const val = adminSessionCookie.value;
-      if (val === "admin_authenticated_token_v1") {
-        isValid = true;
-      } else {
-        // Intentar parsear Base64
+      // Intentar parsear Base64
         try {
           const jsonStr = atob(val);
           const data = JSON.parse(jsonStr);
@@ -37,7 +34,6 @@ export function middleware(request: NextRequest) {
             }
           } catch {}
         }
-      }
     }
 
     // Si no existe la cookie o está expirada, redirigir al login

@@ -4,12 +4,18 @@ import crypto from "crypto";
 // Hash de Bcrypt con factor de costo 12 (Estándar de la industria para contraseñas de alta seguridad)
 // Derivado de: "Admin2026!Vibes"
 export const DEFAULT_ADMIN_BCRYPT_HASH =
-  process.env.ADMIN_PASSWORD_HASH ||
   "$2b$12$TCuAWvZ/29vemSJbxHP/.eJRUh6CFS/5bcgXy.F2CWa9YMfNz5xEK";
+
+export function getAdminPasswordHash(): string {
+  const envHash = process.env.ADMIN_PASSWORD_HASH;
+  if (envHash && envHash.startsWith("$2")) {
+    return envHash;
+  }
+  return DEFAULT_ADMIN_BCRYPT_HASH;
+}
 
 export const ADMIN_CONFIG = {
   email: (process.env.ADMIN_EMAIL || "admin@vibesparfum.com").toLowerCase(),
-  passwordHash: DEFAULT_ADMIN_BCRYPT_HASH,
 };
 
 /**
@@ -30,6 +36,25 @@ export async function verifyPassword(plainPassword: string, hash: string): Promi
     console.error("Error al comparar hash Bcrypt:", err);
     return false;
   }
+}
+
+/**
+ * Verificación unificada para la cuenta de administrador:
+ * 1. Admite ADMIN_PASSWORD directo desde .env / Vercel para comodidad del dueño.
+ * 2. Compara contra Bcrypt hash (ADMIN_PASSWORD_HASH o por defecto).
+ */
+export async function verifyAdminPassword(plainPassword: string): Promise<boolean> {
+  if (!plainPassword) return false;
+
+  // Si se configuró contraseña directa en .env de Vercel
+  const configuredPassword = process.env.ADMIN_PASSWORD;
+  if (configuredPassword && plainPassword === configuredPassword) {
+    return true;
+  }
+
+  // Comprobar contra hash Bcrypt
+  const hash = getAdminPasswordHash();
+  return await verifyPassword(plainPassword, hash);
 }
 
 /**
@@ -63,11 +88,6 @@ export function createAdminSessionCookieValue(userEmail: string): string {
  */
 export function validateAdminSessionValue(cookieValue: string | undefined): boolean {
   if (!cookieValue) return false;
-
-  // Permitir token legacy para compatibilidad hacia atrás
-  if (cookieValue === "admin_authenticated_token_v1") {
-    return true;
-  }
 
   // 1. Probar decodificación Base64
   try {

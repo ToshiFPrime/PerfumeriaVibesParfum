@@ -4,7 +4,7 @@ import React, { useState, Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Lock, Mail, User, ShieldCheck, ArrowRight, CheckCircle2, KeyRound, Loader2, AlertCircle } from "lucide-react";
+import { Lock, Mail, User, ShieldCheck, ArrowRight, CheckCircle2, Loader2, AlertCircle } from "lucide-react";
 import { loginAction } from "@/actions/auth";
 
 function LoginForm() {
@@ -54,7 +54,7 @@ function LoginForm() {
         setMessage({ text: res.message || "Credenciales incorrectas.", type: "error" });
       }
     } catch {
-      // Si el túnel bloquea fetch o hay latencia, intentar Server Action
+      // Fallback a Server Action en caso de latencia de red
       try {
         const formData = new FormData();
         formData.append("email", email);
@@ -74,55 +74,9 @@ function LoginForm() {
         }
       } catch {
         setIsLoading(false);
-        setMessage({ text: "Ocurrió un error al procesar el inicio de sesión. Puedes usar el botón de acceso directo abajo.", type: "error" });
+        setMessage({ text: "Ocurrió un error al procesar el inicio de sesión. Verifica tu conexión.", type: "error" });
       }
     }
-  };
-
-  const handleQuickAdmin = async () => {
-    if (isLoading) return;
-    setIsLoading(true);
-    setEmail("admin@vibesparfum.com");
-    setPassword("Admin2026!Vibes");
-    setMessage({ text: "Verificando credenciales de administrador...", type: "success" });
-
-    try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: "admin@vibesparfum.com",
-          password: "Admin2026!Vibes",
-          redirect: redirectParam,
-        }),
-      });
-      const res = await response.json();
-      if (res.success) {
-        setMessage({ text: "¡Acceso concedido! Abriendo Panel de Administración...", type: "success" });
-        const targetUrl = res.redirectTo || "/admin";
-        setTimeout(() => {
-          router.push(targetUrl);
-          router.refresh();
-        }, 200);
-      } else {
-        // Redirección directa infalible como fallback
-        router.push(`/api/auth/quick-access?role=admin&redirect=${encodeURIComponent(redirectParam)}`);
-      }
-    } catch {
-      // Fallback infalible en túneles temporales
-      router.push(`/api/auth/quick-access?role=admin&redirect=${encodeURIComponent(redirectParam)}`);
-    }
-  };
-
-  const handleQuickCustomer = () => {
-    if (isLoading) return;
-    setIsLoading(true);
-    setEmail("cliente@vibesparfum.com");
-    setPassword("Cliente2026!");
-    setMessage({ text: "Sesión de Cliente iniciada. Redirigiendo al Catálogo...", type: "success" });
-    setTimeout(() => {
-      router.push("/catalogo");
-    }, 200);
   };
 
   return (
@@ -277,39 +231,6 @@ function LoginForm() {
             )}
           </button>
         </form>
-
-        {/* Quick Access for Testing */}
-        <div className="pt-3 border-t border-zinc-800/80 space-y-2">
-          <p className="text-[11px] text-zinc-400 font-bold uppercase tracking-wider text-center">
-            Accesos Rápidos Demostrativos
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={handleQuickAdmin}
-              className="py-2.5 px-3 rounded-xl bg-zinc-950 border border-zinc-800 hover:border-zinc-600 text-white text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-            >
-              <KeyRound className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Modo Admin</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleQuickCustomer}
-              className="py-2.5 px-3 rounded-xl bg-zinc-950 border border-zinc-800 hover:border-zinc-600 text-white text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-            >
-              <User className="w-3.5 h-3.5 text-zinc-400" />
-              <span>Modo Cliente</span>
-            </button>
-          </div>
-
-          <a
-            href="/api/auth/quick-access?role=admin"
-            className="w-full py-2 px-3 rounded-xl bg-emerald-950/40 border border-emerald-500/30 hover:border-emerald-500/60 text-emerald-300 hover:text-emerald-200 text-[11px] font-medium flex items-center justify-center gap-1.5 transition-all text-center"
-          >
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Entrar al Panel con 1 Clic (Acceso Directo)</span>
-          </a>
-        </div>
 
         {/* Security Notice */}
         <div className="pt-2 border-t border-zinc-800/80 flex items-center justify-center gap-2 text-[11px] text-zinc-500">
