@@ -28,10 +28,17 @@ export async function GET() {
     }
   });
 
-  return NextResponse.json({
-    totalProducts: MOCK_PERFUMES.filter((p) => p.isActive !== false).length,
-    families: Object.entries(families).map(([name, count]) => ({ name, count })),
-    brands: Object.entries(brands).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count),
-    genders: Object.entries(genders).map(([name, count]) => ({ name, count })),
-  });
+  return NextResponse.json(
+    {
+      totalProducts: MOCK_PERFUMES.filter((p) => p.isActive !== false).length,
+      families: Object.entries(families).map(([name, count]) => ({ name, count })),
+      brands: Object.entries(brands).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count),
+      genders: Object.entries(genders).map(([name, count]) => ({ name, count })),
+    },
+    {
+      headers: {
+        "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
+      },
+    }
+  );
 }

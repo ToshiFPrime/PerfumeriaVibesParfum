@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { MOCK_PERFUMES } from "@/lib/data/mockPerfumes";
+import { getProductsDb } from "@/lib/supabase/service";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import type { Product, ProductVariant } from "@/types";
 
@@ -44,7 +45,7 @@ const newProductSchema = z.object({
     .min(1, "Debe incluir al menos una variante de presentación"),
 });
 
-// GET: Consultar perfumes con filtros y búsqueda
+// GET: Consultar perfumes con filtros y búsqueda (Edge Caching)
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const q = searchParams.get("q")?.toLowerCase().trim();
@@ -54,41 +55,26 @@ export async function GET(request: NextRequest) {
   const inStock = searchParams.get("inStock") === "true";
   const limit = Math.min(Number(searchParams.get("limit")) || 50, 100);
 
-  let results = MOCK_PERFUMES.filter((p) => p.isActive !== false);
-
-  if (q) {
-    results = results.filter(
-      (p) =>
-        p.name.toLowerCase().includes(q) ||
-        p.brand.toLowerCase().includes(q) ||
-        p.olfactoryFamily.toLowerCase().includes(q)
-    );
-  }
-
-  if (brand) {
-    results = results.filter((p) => p.brand.toLowerCase() === brand.toLowerCase());
-  }
-
-  if (family) {
-    results = results.filter(
-      (p) => p.olfactoryFamily.toLowerCase() === family.toLowerCase()
-    );
-  }
-
-  if (gender) {
-    results = results.filter(
-      (p) => p.gender.toLowerCase() === gender.toLowerCase()
-    );
-  }
-
-  if (inStock) {
-    results = results.filter((p) => p.variants.some((v) => v.stock > 0));
-  }
-
-  return NextResponse.json({
-    total: results.length,
-    products: results.slice(0, limit),
+  const results = await getProductsDb({
+    q,
+    brand,
+    family,
+    gender,
+    inStock,
+    limit,
   });
+
+  return NextResponse.json(
+    {
+      total: results.length,
+      products: results,
+    },
+    {
+      headers: {
+        "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+      },
+    }
+  );
 }
 
 // POST: Crear nuevo perfume (Protegido por cookie de administrador)
@@ -134,6 +120,9 @@ export async function POST(request: NextRequest) {
       reviewsCount: 0,
       isActive: true,
     };
+
+    revalidatePath("/catalogo");
+    revalidatePath("/api/products");
 
     return NextResponse.json(
       { success: true, message: "Perfume creado exitosamente", product: newProduct },

@@ -1,0 +1,543 @@
+import { supabase } from "./client";
+import { supabaseServer } from "./server";
+import { MOCK_PERFUMES } from "@/lib/data/mockPerfumes";
+import { INITIAL_BRANDS, INITIAL_ORDERS } from "@/lib/data/adminMockData";
+import { ACTIVE_COUPONS } from "@/lib/data/shippingRates";
+import type { Product, ProductVariant, DiscountCoupon, Gender, Concentration, OlfactoryFamily, OlfactoryPyramid } from "@/types";
+import type { AdminOrder, PerfumeBrand, StockMovementLog } from "@/types/admin";
+
+interface DbProductVariant {
+  id: string;
+  milliliters: number;
+  label: string;
+  price: number | string;
+  compare_at_price?: number | string | null;
+  stock: number;
+  sku: string;
+}
+
+interface DbProduct {
+  id: string;
+  name: string;
+  brand: string;
+  slug: string;
+  gender: Gender;
+  concentration: Concentration;
+  description: string;
+  olfactory_family: OlfactoryFamily;
+  olfactory_pyramid?: OlfactoryPyramid | null;
+  images?: string[] | null;
+  rating?: number | string | null;
+  reviews_count?: number | null;
+  is_featured?: boolean;
+  is_best_seller?: boolean;
+  is_new_arrival?: boolean;
+  is_on_sale?: boolean;
+  discount_percent?: number | null;
+  tags?: string[] | null;
+  is_active?: boolean;
+  product_variants?: DbProductVariant[];
+}
+
+interface DbBrand {
+  id: string;
+  name: string;
+  country?: string | null;
+  category: "Árabe / Dubai" | "Diseñador Lujo" | "Nicho / Exclusivo";
+  is_active: boolean;
+}
+
+interface DbDiscount {
+  id: string;
+  code: string;
+  percentage: number;
+  description?: string | null;
+  min_subtotal?: number | string | null;
+}
+
+interface DbOrder {
+  id: string;
+  order_number: string;
+  customer_info?: { fullName?: string; phone?: string } | null;
+  shipping_info?: { city?: string; department?: string; courier?: string } | null;
+  subtotal: number | string;
+  discount_amount: number | string;
+  shipping_cost: number | string;
+  total: number | string;
+  status: string;
+  created_at: string;
+}
+
+/**
+ * Verifica si las variables de entorno de Supabase están configuradas y son válidas
+ * (evita llamadas fallidas si el proyecto aún no se ha enlazado en Supabase Dashboard)
+ */
+export function isSupabaseConfigured(): boolean {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !anonKey) return false;
+  if (url.includes("placeholder-project") || anonKey.includes("placeholder")) return false;
+  return url.startsWith("https://") && anonKey.length > 20;
+}
+
+// ============================================================================
+// CATÁLOGO DE PRODUCTOS (HYBRID PERSISTENCE)
+// ============================================================================
+
+export interface GetProductsFilter {
+  q?: string;
+  brand?: string | null;
+  family?: string | null;
+  gender?: string | null;
+  inStock?: boolean;
+  limit?: number;
+}
+
+export async function getProductsDb(filters: GetProductsFilter = {}): Promise<Product[]> {
+  if (isSupabaseConfigured()) {
+    try {
+      let query = supabase
+        .from("products")
+        .select(`
+          id,
+          name,
+          brand,
+          slug,
+          gender,
+          concentration,
+          description,
+          olfactory_family,
+          olfactory_pyramid,
+          images,
+          rating,
+          reviews_count,
+          is_featured,
+          is_best_seller,
+          is_new_arrival,
+          is_on_sale,
+          discount_percent,
+          tags,
+          is_active,
+          product_variants (
+            id,
+            milliliters,
+            label,
+            price,
+            compare_at_price,
+            stock,
+            sku
+          )
+        `)
+        .eq("is_active", true);
+
+      if (filters.brand) {
+        query = query.ilike("brand", `%${filters.brand}%`);
+      }
+      if (filters.family) {
+        query = query.eq("olfactory_family", filters.family);
+      }
+      if (filters.gender) {
+        query = query.eq("gender", filters.gender);
+      }
+      if (filters.limit) {
+        query = query.limit(filters.limit);
+      }
+
+      const { data, error } = await query;
+
+      if (!error && data && data.length > 0) {
+        const rows = data as unknown as DbProduct[];
+        const transformed: Product[] = rows.map((row) => ({
+          id: row.id,
+          name: row.name,
+          brand: row.brand,
+          slug: row.slug,
+          gender: row.gender,
+          concentration: row.concentration,
+          description: row.description,
+          olfactoryFamily: row.olfactory_family,
+          pyramid: row.olfactory_pyramid || { top: [], heart: [], base: [] },
+          images: row.images || [],
+          rating: Number(row.rating) || 5.0,
+          reviewsCount: row.reviews_count || 0,
+          isFeatured: row.is_featured,
+          isBestSeller: row.is_best_seller,
+          isNewArrival: row.is_new_arrival,
+          isOnSale: row.is_on_sale,
+          discountPercent: row.discount_percent ?? undefined,
+          tags: row.tags || [],
+          isActive: row.is_active,
+          variants: (row.product_variants || []).map((v): ProductVariant => ({
+            id: v.id,
+            milliliters: v.milliliters,
+            label: v.label,
+            price: Number(v.price),
+            compareAtPrice: v.compare_at_price ? Number(v.compare_at_price) : undefined,
+            stock: v.stock,
+            sku: v.sku,
+          })),
+        }));
+
+        if (filters.q) {
+          const qLower = filters.q.toLowerCase().trim();
+          return transformed.filter(
+            (p) =>
+              p.name.toLowerCase().includes(qLower) ||
+              p.brand.toLowerCase().includes(qLower) ||
+              p.olfactoryFamily.toLowerCase().includes(qLower)
+          );
+        }
+
+        if (filters.inStock) {
+          return transformed.filter((p) => p.variants.some((v) => v.stock > 0));
+        }
+
+        return transformed;
+      }
+    } catch (err) {
+      console.warn("Supabase getProductsDb query failed, falling back to mock:", err);
+    }
+  }
+
+  // Fallback seguro a MOCK_PERFUMES
+  let results = MOCK_PERFUMES.filter((p) => p.isActive !== false);
+
+  if (filters.q) {
+    const qLower = filters.q.toLowerCase().trim();
+    results = results.filter(
+      (p) =>
+        p.name.toLowerCase().includes(qLower) ||
+        p.brand.toLowerCase().includes(qLower) ||
+        p.olfactoryFamily.toLowerCase().includes(qLower)
+    );
+  }
+  if (filters.brand) {
+    results = results.filter((p) => p.brand.toLowerCase() === filters.brand!.toLowerCase());
+  }
+  if (filters.family) {
+    results = results.filter((p) => p.olfactoryFamily.toLowerCase() === filters.family!.toLowerCase());
+  }
+  if (filters.gender) {
+    results = results.filter((p) => p.gender.toLowerCase() === filters.gender!.toLowerCase());
+  }
+  if (filters.inStock) {
+    results = results.filter((p) => p.variants.some((v) => v.stock > 0));
+  }
+  if (filters.limit) {
+    results = results.slice(0, filters.limit);
+  }
+
+  return results;
+}
+
+export async function getProductByIdOrSlugDb(idOrSlug: string): Promise<Product | null> {
+  const cleanId = decodeURIComponent(idOrSlug).toLowerCase().trim();
+
+  if (isSupabaseConfigured()) {
+    try {
+      const { data, error } = await supabase
+        .from("products")
+        .select(`
+          id,
+          name,
+          brand,
+          slug,
+          gender,
+          concentration,
+          description,
+          olfactory_family,
+          olfactory_pyramid,
+          images,
+          rating,
+          reviews_count,
+          is_featured,
+          is_best_seller,
+          is_new_arrival,
+          is_on_sale,
+          discount_percent,
+          tags,
+          is_active,
+          product_variants (
+            id,
+            milliliters,
+            label,
+            price,
+            compare_at_price,
+            stock,
+            sku
+          )
+        `)
+        .or(`id.eq.${cleanId},slug.eq.${cleanId}`)
+        .maybeSingle();
+
+      if (!error && data) {
+        const row = data as unknown as DbProduct;
+        return {
+          id: row.id,
+          name: row.name,
+          brand: row.brand,
+          slug: row.slug,
+          gender: row.gender,
+          concentration: row.concentration,
+          description: row.description,
+          olfactoryFamily: row.olfactory_family,
+          pyramid: row.olfactory_pyramid || { top: [], heart: [], base: [] },
+          images: row.images || [],
+          rating: Number(row.rating) || 5.0,
+          reviewsCount: row.reviews_count || 0,
+          isFeatured: row.is_featured,
+          isBestSeller: row.is_best_seller,
+          isNewArrival: row.is_new_arrival,
+          isOnSale: row.is_on_sale,
+          discountPercent: row.discount_percent ?? undefined,
+          tags: row.tags || [],
+          isActive: row.is_active,
+          variants: (row.product_variants || []).map((v): ProductVariant => ({
+            id: v.id,
+            milliliters: v.milliliters,
+            label: v.label,
+            price: Number(v.price),
+            compareAtPrice: v.compare_at_price ? Number(v.compare_at_price) : undefined,
+            stock: v.stock,
+            sku: v.sku,
+          })),
+        };
+      }
+    } catch (err) {
+      console.warn("Supabase getProductByIdOrSlugDb failed, falling back to mock:", err);
+    }
+  }
+
+  const match = MOCK_PERFUMES.find(
+    (p) => p.id.toLowerCase() === cleanId || p.slug.toLowerCase() === cleanId
+  );
+  return match || null;
+}
+
+// ============================================================================
+// CASAS PERFUMISTAS (BRANDS)
+// ============================================================================
+
+export async function getBrandsDb(): Promise<PerfumeBrand[]> {
+  if (isSupabaseConfigured()) {
+    try {
+      const { data, error } = await supabase
+        .from("brands")
+        .select("*")
+        .order("name", { ascending: true });
+
+      if (!error && data && data.length > 0) {
+        const rows = data as unknown as DbBrand[];
+        return rows.map((b) => ({
+          id: b.id,
+          name: b.name,
+          origin: b.country || "Emiratos Árabes Unidos",
+          category: b.category,
+          perfumesCount: 0,
+          isActive: b.is_active,
+        }));
+      }
+    } catch (err) {
+      console.warn("Supabase getBrandsDb failed, falling back to mock:", err);
+    }
+  }
+
+  return INITIAL_BRANDS;
+}
+
+export async function createBrandDb(brand: Omit<PerfumeBrand, "id">): Promise<PerfumeBrand> {
+  const id = `br-${Date.now()}`;
+  if (isSupabaseConfigured()) {
+    try {
+      const slug = brand.name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+      const { data, error } = await supabaseServer
+        .from("brands")
+        .insert({
+          name: brand.name,
+          slug,
+          country: brand.origin,
+          category: brand.category.includes("Árabe") ? "Árabe" : brand.category.includes("Nicho") ? "Nicho" : "Diseñador",
+          is_active: brand.isActive,
+        })
+        .select()
+        .single();
+
+      if (!error && data) {
+        const row = data as unknown as DbBrand;
+        return {
+          id: row.id,
+          name: row.name,
+          origin: row.country || brand.origin,
+          category: brand.category,
+          perfumesCount: 0,
+          isActive: row.is_active,
+        };
+      }
+    } catch (err) {
+      console.warn("Supabase createBrandDb failed, returning local instance:", err);
+    }
+  }
+
+  return {
+    id,
+    ...brand,
+  };
+}
+
+// ============================================================================
+// CUPONES Y DESCUENTOS (DISCOUNTS)
+// ============================================================================
+
+export async function getCouponsDb(): Promise<DiscountCoupon[]> {
+  if (isSupabaseConfigured()) {
+    try {
+      const { data, error } = await supabase
+        .from("discounts")
+        .select("*")
+        .eq("is_active", true);
+
+      if (!error && data && data.length > 0) {
+        const rows = data as unknown as DbDiscount[];
+        return rows.map((d) => ({
+          code: d.code,
+          percentage: d.percentage,
+          description: d.description || `Descuento de ${d.percentage}%`,
+          minSubtotal: d.min_subtotal ? Number(d.min_subtotal) : 0,
+        }));
+      }
+    } catch (err) {
+      console.warn("Supabase getCouponsDb failed, falling back to mock:", err);
+    }
+  }
+
+  return ACTIVE_COUPONS;
+}
+
+export async function validateCouponDb(code: string): Promise<DiscountCoupon | null> {
+  const cleanCode = code.trim().toUpperCase();
+  const all = await getCouponsDb();
+  return all.find((c) => c.code.toUpperCase() === cleanCode) || null;
+}
+
+// ============================================================================
+// PEDIDOS Y ÓRDENES (ORDERS)
+// ============================================================================
+
+export async function getOrdersDb(): Promise<AdminOrder[]> {
+  if (isSupabaseConfigured()) {
+    try {
+      const { data, error } = await supabaseServer
+        .from("orders")
+        .select(`
+          id,
+          order_number,
+          customer_info,
+          shipping_info,
+          subtotal,
+          discount_amount,
+          shipping_cost,
+          total,
+          status,
+          created_at
+        `)
+        .order("created_at", { ascending: false });
+
+      if (!error && data && data.length > 0) {
+        const rows = data as unknown as DbOrder[];
+        return rows.map((o) => {
+          const cust = o.customer_info || {};
+          const ship = o.shipping_info || {};
+          const orderStatus: AdminOrder["status"] =
+            o.status === "confirmed"
+              ? "Confirmado"
+              : o.status === "shipped"
+              ? "Enviado"
+              : o.status === "delivered"
+              ? "Entregado"
+              : "Pendiente";
+
+          return {
+            id: o.id,
+            orderNumber: o.order_number,
+            customerName: cust.fullName || "Cliente Vibes",
+            phone: cust.phone || "Sin teléfono",
+            city: ship.city || "Bolivia",
+            department: ship.department || "Nacional",
+            itemsSummary: "Pedido en línea Vibes Parfum",
+            total: Number(o.total) || 0,
+            status: orderStatus,
+            date: new Date(o.created_at).toLocaleDateString("es-BO"),
+            courier: ship.courier || undefined,
+          };
+        });
+      }
+    } catch (err) {
+      console.warn("Supabase getOrdersDb failed, falling back to mock:", err);
+    }
+  }
+
+  return INITIAL_ORDERS;
+}
+
+export async function updateOrderStatusDb(
+  orderId: string,
+  status: "Pendiente" | "Confirmado" | "Enviado" | "Entregado",
+  courier?: string
+): Promise<boolean> {
+  if (isSupabaseConfigured()) {
+    try {
+      const dbStatus =
+        status === "Confirmado"
+          ? "confirmed"
+          : status === "Enviado"
+          ? "shipped"
+          : status === "Entregado"
+          ? "delivered"
+          : "pending";
+
+      const updatePayload: Record<string, unknown> = {
+        status: dbStatus,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (courier) {
+        updatePayload.shipping_info = { courier };
+      }
+
+      const { error } = await supabaseServer
+        .from("orders")
+        .update(updatePayload)
+        .eq("id", orderId);
+
+      return !error;
+    } catch (err) {
+      console.warn("Supabase updateOrderStatusDb error:", err);
+      return false;
+    }
+  }
+  return true;
+}
+
+// ============================================================================
+// AUDITORÍA Y KÁRDEX DE STOCK
+// ============================================================================
+
+export async function recordStockMovementDb(log: StockMovementLog): Promise<void> {
+  if (isSupabaseConfigured()) {
+    try {
+      await supabaseServer.from("stock_movements").insert({
+        variant_id: log.variantId,
+        product_id: log.perfumeId,
+        delta: log.delta,
+        previous_stock: log.previousStock,
+        new_stock: log.newStock,
+        reason: log.reason,
+        reason_label: log.reasonLabel,
+        notes: log.notes,
+        admin_name: log.adminName,
+      });
+    } catch (err) {
+      console.warn("Supabase recordStockMovementDb failed:", err);
+    }
+  }
+}

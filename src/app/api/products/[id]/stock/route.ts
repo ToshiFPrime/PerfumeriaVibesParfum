@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { recordStockMovementDb } from "@/lib/supabase/service";
+import type { StockAdjustmentReason } from "@/types/admin";
 import { z } from "zod";
 
 const updateStockSchema = z.object({
@@ -55,6 +57,24 @@ export async function PATCH(
       timestamp: new Date().toISOString(),
       admin: "Super Admin",
     };
+
+    // Registrar en Supabase si está activo
+    recordStockMovementDb({
+      id: auditRecord.id,
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      perfumeId: productId,
+      perfumeName: "Perfume " + productId,
+      brand: "Vibes",
+      variantId,
+      variantLabel: "Variante",
+      previousStock: 0,
+      newStock: newStock || 0,
+      delta: delta || 0,
+      reason: (reason as StockAdjustmentReason) || "ajuste_inventario",
+      reasonLabel: "Ajuste por API",
+      notes: notes || undefined,
+      adminName: "Super Admin",
+    }).catch(() => {});
 
     return NextResponse.json({
       success: true,

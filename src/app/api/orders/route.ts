@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { customerOrderSchema } from "@/lib/validation/schemas";
-import { INITIAL_ORDERS } from "@/lib/data/adminMockData";
+import { customerOrderSchema, orderStatusUpdateSchema } from "@/lib/validation/schemas";
+import { getOrdersDb, updateOrderStatusDb } from "@/lib/supabase/service";
 import { z } from "zod";
 
 const createOrderSchema = z.object({
@@ -29,9 +29,11 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  const orders = await getOrdersDb();
+
   return NextResponse.json({
-    total: INITIAL_ORDERS.length,
-    orders: INITIAL_ORDERS,
+    total: orders.length,
+    orders,
   });
 }
 
@@ -93,3 +95,48 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+// PATCH: Actualizar estado de pedido o asignar courier de despacho
+export async function PATCH(request: NextRequest) {
+  const adminCookie = request.cookies.get("vibes_admin_session");
+  if (!adminCookie || !adminCookie.value) {
+    return NextResponse.json(
+      { error: "No autorizado. Se requiere sesión de administrador activa." },
+      { status: 401 }
+    );
+  }
+
+  try {
+    const body = await request.json();
+    const parsed = orderStatusUpdateSchema.safeParse(body);
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Datos de actualización inválidos", details: parsed.error.format() },
+        { status: 400 }
+      );
+    }
+
+    const { orderId, status, courier } = parsed.data;
+    const success = await updateOrderStatusDb(orderId, status, courier);
+
+    if (!success) {
+      return NextResponse.json(
+        { error: `No se pudo actualizar la orden con ID '${orderId}'` },
+        { status: 400 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: `Estado de la orden actualizado a '${status}'`,
+      orderId,
+      status,
+      courier,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Error desconocido";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
