@@ -1,7 +1,7 @@
 "use client";
 
-import React from "react";
-import { Star, Plus, Check, Trash2 } from "lucide-react";
+import React, { useState, useMemo } from "react";
+import { Star, Plus, Check, Trash2, Search, Filter, RotateCcw, ShieldCheck, Heart } from "lucide-react";
 import type { AdminReview } from "@/types/admin";
 
 interface ReviewsModerationTabProps {
@@ -25,46 +25,72 @@ export function ReviewsModerationTab({
   onDeleteReview,
   onOpenAddReview,
 }: ReviewsModerationTabProps) {
-  const filteredReviews = reviews.filter((r) => {
-    if (reviewFilter === "all") return true;
-    return r.status === reviewFilter;
-  });
+  const [searchTerm, setSearchTerm] = useState("");
+  const [ratingFilter, setRatingFilter] = useState<string>("all");
+  const [onlyVerified, setOnlyVerified] = useState(false);
+
+  // Filtrado compuesto
+  const filteredReviews = useMemo(() => {
+    return reviews.filter((r) => {
+      const term = searchTerm.toLowerCase().trim();
+      const matchesSearch =
+        !term ||
+        r.perfumeName.toLowerCase().includes(term) ||
+        r.authorName.toLowerCase().includes(term) ||
+        r.city.toLowerCase().includes(term) ||
+        r.comment.toLowerCase().includes(term);
+
+      const matchesStatus = reviewFilter === "all" || r.status === reviewFilter;
+
+      let matchesRating = true;
+      if (ratingFilter === "5") matchesRating = r.rating === 5;
+      else if (ratingFilter === "4") matchesRating = r.rating === 4;
+      else if (ratingFilter === "3_or_less") matchesRating = r.rating <= 3;
+
+      const matchesVerified = !onlyVerified || r.isVerified;
+
+      return matchesSearch && matchesStatus && matchesRating && matchesVerified;
+    });
+  }, [reviews, searchTerm, reviewFilter, ratingFilter, onlyVerified]);
+
+  const hasActiveFilters =
+    searchTerm !== "" || reviewFilter !== "all" || ratingFilter !== "all" || onlyVerified;
+
+  const handleResetFilters = () => {
+    setSearchTerm("");
+    onReviewFilterChange("all");
+    setRatingFilter("all");
+    setOnlyVerified(false);
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
+      {/* Encabezado y Acciones */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h3 className="text-base font-bold text-white flex items-center gap-2">
             <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
-            Moderación de Reseñas & Testimonios de Clientes
+            <span>Moderación de Reseñas & Testimonios</span>
+            <span className="px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300 font-mono text-[11px]">
+              {filteredReviews.length} de {reviews.length} opiniones
+            </span>
           </h3>
           <p className="text-xs text-zinc-400 mt-0.5">
-            Revisa opiniones de compradores, valida compras reales y destaca testimonios en la portada para generar confianza inmediata.
+            Valida opiniones de compradores reales de Bolivia y destaca testimonios de clientes satisfechos en la portada.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex items-center p-1 rounded-xl bg-zinc-900 border border-zinc-800 text-xs">
-            {[
-              { id: "all", label: "Todas" },
-              { id: "approved", label: "Aprobadas" },
-              { id: "pending", label: "Pendientes" },
-              { id: "hidden", label: "Ocultas" },
-            ].map((flt) => (
-              <button
-                key={flt.id}
-                type="button"
-                onClick={() => onReviewFilterChange(flt.id as "all" | "approved" | "pending" | "hidden")}
-                className={`px-2.5 py-1 rounded-lg transition-all ${
-                  reviewFilter === flt.id
-                    ? "bg-zinc-800 text-white font-bold"
-                    : "text-zinc-400 hover:text-white"
-                }`}
-              >
-                {flt.label}
-              </button>
-            ))}
-          </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={handleResetFilters}
+              className="px-3 py-2 rounded-xl bg-zinc-800/80 hover:bg-zinc-700 text-zinc-300 hover:text-white font-medium flex items-center gap-1.5 transition-all text-xs cursor-pointer active:scale-95"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Limpiar Filtros</span>
+            </button>
+          )}
 
           <button
             type="button"
@@ -77,149 +103,211 @@ export function ReviewsModerationTab({
         </div>
       </div>
 
+      {/* Controles de Filtros y Búsqueda */}
+      <div className="p-4 rounded-2xl bg-zinc-900/80 border border-zinc-800/90 space-y-3.5 shadow-lg">
+        {/* Búsqueda por texto */}
+        <div className="relative">
+          <Search className="w-4 h-4 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Buscar por fragancia reseñada, cliente, ciudad o palabras en la opinión..."
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-white transition-colors"
+          />
+        </div>
+
+        {/* Píldoras de Estado y Dropdown de Estrellas */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-zinc-800/60">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none text-xs">
+            {[
+              { id: "all", label: "Todas" },
+              { id: "approved", label: "Aprobadas" },
+              { id: "pending", label: "Pendientes" },
+              { id: "hidden", label: "Ocultas" },
+            ].map((flt) => (
+              <button
+                key={flt.id}
+                type="button"
+                onClick={() => onReviewFilterChange(flt.id as "all" | "approved" | "pending" | "hidden")}
+                className={`px-3 py-1.5 rounded-xl font-medium transition-all shrink-0 cursor-pointer ${
+                  reviewFilter === flt.id
+                    ? "bg-white text-zinc-950 font-bold shadow-md"
+                    : "bg-zinc-950 text-zinc-400 hover:text-white border border-zinc-800"
+                }`}
+              >
+                {flt.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5">
+              <Star className="w-3.5 h-3.5 text-amber-400" />
+              <select
+                value={ratingFilter}
+                onChange={(e) => setRatingFilter(e.target.value)}
+                className="py-1.5 px-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-300 focus:outline-none focus:border-white cursor-pointer"
+              >
+                <option value="all">Calificación (Todas)</option>
+                <option value="5">⭐⭐⭐⭐⭐ 5 Estrellas</option>
+                <option value="4">⭐⭐⭐⭐ 4 Estrellas</option>
+                <option value="3_or_less">⭐⭐⭐ 3 o menos</option>
+              </select>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setOnlyVerified(!onlyVerified)}
+              className={`px-2.5 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer ${
+                onlyVerified
+                  ? "bg-emerald-950 border border-emerald-500/50 text-emerald-300 font-bold"
+                  : "bg-zinc-950 border border-zinc-800 text-zinc-400 hover:text-white"
+              }`}
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Solo Compras Verificadas</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Listado de Reseñas */}
-      <div className="space-y-3">
-        {filteredReviews.map((rev) => (
-          <div
-            key={rev.id}
-            className={`p-5 rounded-2xl border transition-all shadow-md space-y-4 ${
-              rev.status === "approved"
-                ? "bg-zinc-900/60 border-zinc-800"
-                : rev.status === "pending"
-                ? "bg-amber-950/20 border-amber-500/30"
-                : "bg-red-950/15 border-red-500/20 opacity-70"
-            }`}
+      {filteredReviews.length === 0 ? (
+        <div className="p-12 text-center rounded-3xl bg-zinc-900/40 border border-zinc-800/80 space-y-3">
+          <Star className="w-10 h-10 text-zinc-600 mx-auto" />
+          <h4 className="text-sm font-bold text-white">No hay opiniones que coincidan con estos filtros</h4>
+          <p className="text-xs text-zinc-400 max-w-sm mx-auto">
+            Intenta cambiar el filtro de estado o borrar el término de búsqueda.
+          </p>
+          <button
+            type="button"
+            onClick={handleResetFilters}
+            className="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-xs font-semibold text-white transition-all cursor-pointer"
           >
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center font-bold text-sm text-zinc-200 shrink-0">
-                  {rev.authorName.charAt(0)}
-                </div>
-                <div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-bold text-white">{rev.authorName}</span>
-                    <span className="text-xs text-zinc-400">({rev.city})</span>
-
-                    {/* Botón interactivo: Compra Verificada */}
-                    <button
-                      type="button"
-                      onClick={() => onToggleVerified(rev.id)}
-                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer ${
-                        rev.isVerified
-                          ? "bg-emerald-950 text-emerald-400 border border-emerald-500/40"
-                          : "bg-zinc-800 text-zinc-400 hover:text-white"
-                      }`}
-                      title="Haz clic para marcar o desmarcar como Compra Verificada"
-                    >
-                      <Check className="w-3 h-3" />
-                      <span>{rev.isVerified ? "Compra Verificada" : "Marcar Verificada"}</span>
-                    </button>
-
-                    {/* Botón interactivo: Destacar en Portada */}
-                    <button
-                      type="button"
-                      onClick={() => onToggleFeatured(rev.id)}
-                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer ${
-                        rev.isFeatured
-                          ? "bg-amber-950/80 text-amber-300 border border-amber-500/50"
-                          : "bg-zinc-800 text-zinc-400 hover:text-amber-300"
-                      }`}
-                      title="Destacar testimonio clave en la portada de la tienda"
-                    >
-                      <Star className={`w-3 h-3 ${rev.isFeatured ? "fill-amber-300" : ""}`} />
-                      <span>{rev.isFeatured ? "★ Destacado en Portada" : "☆ Destacar en Portada"}</span>
-                    </button>
+            Limpiar filtros
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filteredReviews.map((rev) => (
+            <div
+              key={rev.id}
+              className={`p-4 sm:p-5 rounded-2xl border transition-all shadow-md space-y-3.5 ${
+                rev.status === "approved"
+                  ? "bg-zinc-900/60 border-zinc-800"
+                  : rev.status === "pending"
+                  ? "bg-amber-950/20 border-amber-500/30"
+                  : "bg-red-950/15 border-red-500/20 opacity-70"
+              }`}
+            >
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center font-bold text-sm text-zinc-200 shrink-0">
+                    {rev.authorName.charAt(0)}
                   </div>
-
-                  <p className="text-[11px] text-zinc-400 mt-0.5">
-                    Fragancia evaluada: <strong className="text-zinc-200">{rev.perfumeName}</strong> • {rev.date}
-                  </p>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-bold text-white">{rev.authorName}</span>
+                      <span className="text-xs text-zinc-400">({rev.city})</span>
+                      {rev.isVerified && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-950/80 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
+                          <Check className="w-2.5 h-2.5" />
+                          Compra Verificada
+                        </span>
+                      )}
+                      {rev.isFeatured && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-950/80 text-purple-300 border border-purple-500/40 flex items-center gap-1">
+                          <Heart className="w-2.5 h-2.5 fill-purple-400" />
+                          Destacada en Portada
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-xs text-zinc-400 block mt-0.5">
+                      Fragancia: <strong className="text-zinc-200">{rev.perfumeName}</strong> • {rev.date}
+                    </span>
+                  </div>
                 </div>
-              </div>
 
-              {/* Estrellas y Estado de Moderación */}
-              <div className="flex items-center gap-3 self-end sm:self-auto">
-                <div className="flex items-center gap-0.5">
-                  {[...Array(5)].map((_, i) => (
+                {/* Rating Estrellas */}
+                <div className="flex items-center gap-1">
+                  {[1, 2, 3, 4, 5].map((star) => (
                     <Star
-                      key={i}
-                      className={`w-3.5 h-3.5 ${
-                        i < rev.rating ? "fill-amber-400 text-amber-400" : "text-zinc-700"
+                      key={star}
+                      className={`w-4 h-4 ${
+                        star <= rev.rating
+                          ? "text-amber-400 fill-amber-400"
+                          : "text-zinc-700 fill-zinc-800"
                       }`}
                     />
                   ))}
                 </div>
-
-                <span
-                  className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${
-                    rev.status === "approved"
-                      ? "bg-emerald-950 text-emerald-400 border border-emerald-500/30"
-                      : rev.status === "pending"
-                      ? "bg-amber-950 text-amber-300 border border-amber-500/40"
-                      : "bg-red-950 text-red-400 border border-red-500/40"
-                  }`}
-                >
-                  {rev.status === "approved" ? "Aprobada" : rev.status === "pending" ? "Pendiente" : "Oculta"}
-                </span>
-              </div>
-            </div>
-
-            {/* Texto de la Reseña */}
-            <blockquote className="p-3.5 rounded-xl bg-zinc-950/70 border border-zinc-800/80 text-xs text-zinc-200 italic leading-relaxed">
-              &ldquo;{rev.comment}&rdquo;
-            </blockquote>
-
-            {/* Acciones de Moderación */}
-            <div className="flex flex-wrap items-center justify-between gap-3 pt-1 text-xs">
-              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                <span className="text-[11px] text-zinc-400 font-medium">Cambiar estado:</span>
-                <button
-                  type="button"
-                  onClick={() => onToggleReviewStatus(rev.id, "approved")}
-                  className={`min-h-[32px] px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
-                    rev.status === "approved"
-                      ? "bg-emerald-600 text-white"
-                      : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
-                  }`}
-                >
-                  Aprobar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onToggleReviewStatus(rev.id, "pending")}
-                  className={`min-h-[32px] px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
-                    rev.status === "pending"
-                      ? "bg-amber-600 text-white"
-                      : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
-                  }`}
-                >
-                  Pendiente
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onToggleReviewStatus(rev.id, "hidden")}
-                  className={`min-h-[32px] px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
-                    rev.status === "hidden"
-                      ? "bg-zinc-700 text-white"
-                      : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
-                  }`}
-                >
-                  Ocultar / Spam
-                </button>
               </div>
 
-              <button
-                type="button"
-                onClick={() => onDeleteReview(rev.id)}
-                className="p-1.5 text-zinc-500 hover:text-red-400 transition-colors rounded-lg hover:bg-zinc-800 cursor-pointer"
-                title="Eliminar reseña permanentemente"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+              {/* Comentario */}
+              <p className="text-xs text-zinc-300 leading-relaxed bg-zinc-950/60 p-3 rounded-xl border border-zinc-800/80 italic">
+                &quot;{rev.comment}&quot;
+              </p>
+
+              {/* Acciones de Moderación */}
+              <div className="pt-2 border-t border-zinc-800/80 flex flex-wrap items-center justify-between gap-2 text-xs">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onToggleFeatured(rev.id)}
+                    className={`px-3 py-1.5 rounded-xl border font-medium transition-all cursor-pointer ${
+                      rev.isFeatured
+                        ? "bg-purple-950 border-purple-500/50 text-purple-300"
+                        : "bg-zinc-800/80 border-zinc-700 text-zinc-400 hover:text-white"
+                    }`}
+                  >
+                    {rev.isFeatured ? "★ En Portada" : "Destacar en Portada"}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => onToggleVerified(rev.id)}
+                    className={`px-3 py-1.5 rounded-xl border font-medium transition-all cursor-pointer ${
+                      rev.isVerified
+                        ? "bg-emerald-950 border-emerald-500/50 text-emerald-300"
+                        : "bg-zinc-800/80 border-zinc-700 text-zinc-400 hover:text-white"
+                    }`}
+                  >
+                    {rev.isVerified ? "✓ Verificado" : "Marcar Verificado"}
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {/* Selector de estado */}
+                  <select
+                    value={rev.status}
+                    onChange={(e) =>
+                      onToggleReviewStatus(
+                        rev.id,
+                        e.target.value as "approved" | "pending" | "hidden"
+                      )
+                    }
+                    className="py-1 px-2.5 rounded-xl bg-zinc-950 border border-zinc-700 text-xs text-zinc-200 focus:outline-none focus:border-white cursor-pointer"
+                  >
+                    <option value="approved">Aprobada (Visible)</option>
+                    <option value="pending">Pendiente de Revisión</option>
+                    <option value="hidden">Oculta (Rechazada)</option>
+                  </select>
+
+                  <button
+                    type="button"
+                    onClick={() => onDeleteReview(rev.id)}
+                    className="p-1.5 rounded-xl bg-zinc-800/80 hover:bg-red-950 border border-zinc-700 hover:border-red-500/50 text-zinc-400 hover:text-red-400 transition-all cursor-pointer"
+                    title="Eliminar reseña definitivamente"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
