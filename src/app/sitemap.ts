@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 import { MOCK_PERFUMES } from "@/lib/data/mockPerfumes";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://vibesparfum.vercel.app";
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://perfumeria-vibes-parfum.vercel.app";
 
   const staticPages: MetadataRoute.Sitemap = [
     {

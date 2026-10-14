@@ -40,7 +40,7 @@ export function ProductCard({ product }: ProductCardProps) {
     const url =
       typeof window !== "undefined"
         ? `${window.location.origin}/producto/${product.slug}`
-        : `https://vibesparfum.vercel.app/producto/${product.slug}`;
+        : `https://perfumeria-vibes-parfum.vercel.app/producto/${product.slug}`;
     const msg = generateProductWhatsAppMessage(
       product.name,
       product.brand,
@@ -58,7 +58,7 @@ export function ProductCard({ product }: ProductCardProps) {
     const url =
       typeof window !== "undefined"
         ? `${window.location.origin}/producto/${product.slug}`
-        : `https://vibesparfum.vercel.app/producto/${product.slug}`;
+        : `https://perfumeria-vibes-parfum.vercel.app/producto/${product.slug}`;
     if (typeof navigator !== "undefined" && navigator.clipboard) {
       navigator.clipboard.writeText(url);
       setCopiedLink(true);

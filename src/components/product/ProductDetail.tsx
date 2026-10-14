@@ -71,7 +71,7 @@ export function ProductDetail({ product, relatedProducts }: ProductDetailProps) 
     if (typeof window !== "undefined") {
       return `${window.location.origin}/producto/${product.slug}`;
     }
-    return `https://vibesparfum.vercel.app/producto/${product.slug}`;
+    return `https://perfumeria-vibes-parfum.vercel.app/producto/${product.slug}`;
   };
 
   const handleAddToCart = () => {

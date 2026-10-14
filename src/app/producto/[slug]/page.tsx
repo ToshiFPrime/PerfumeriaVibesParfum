@@ -20,7 +20,7 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
     };
   }
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://mono-background-attract-bytes.trycloudflare.com";
+  const siteUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "https://perfumeria-vibes-parfum.vercel.app";
   const primaryImage = product.images[0] || "/images/logo-clean.jpg";
   const fullImageUrl = primaryImage.startsWith("http") ? primaryImage : `${siteUrl}${primaryImage}`;
 

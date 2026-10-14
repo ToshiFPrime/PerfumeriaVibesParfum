@@ -22,7 +22,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://vibesparfum.vercel.app"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://perfumeria-vibes-parfum.vercel.app"),
   title: "Vibes Parfum | Perfumería de Lujo & Decants de Autor en Bolivia",
   description:
     "Perfumería exclusiva en Bolivia. Fragancias nicho y de diseñador en frasco completo y decants originales de 5ml y 10ml. Envíos asegurados a los 9 departamentos. Pedidos WhatsApp 65947174 / 65867500.",
@@ -42,7 +42,7 @@ export const metadata: Metadata = {
     title: "Vibes Parfum | Alta Perfumería & Decants Originales",
     description:
       "Explora las fragancias más deseadas del mundo en presentaciones completas o decants de 5ml y 10ml con envíos a toda Bolivia.",
-    url: "https://vibesparfum.vercel.app",
+    url: process.env.NEXT_PUBLIC_APP_URL || "https://perfumeria-vibes-parfum.vercel.app",
     siteName: "Vibes Parfum",
     images: [
       {

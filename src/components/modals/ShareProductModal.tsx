@@ -30,7 +30,7 @@ export function ShareProductModal({
   const siteUrl =
     typeof window !== "undefined"
       ? window.location.origin
-      : "https://mono-background-attract-bytes.trycloudflare.com";
+      : process.env.NEXT_PUBLIC_APP_URL || "https://perfumeria-vibes-parfum.vercel.app";
   const primaryImage = product.images[0] || "/images/logo-clean.jpg";
   const fullImageUrl = primaryImage.startsWith("http") ? primaryImage : `${siteUrl}${primaryImage}`;
 
