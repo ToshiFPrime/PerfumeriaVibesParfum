@@ -101,6 +101,13 @@ export function AdminTabBar({
       badgeColor: "default",
     },
     {
+      id: "calculator",
+      label: "Calculadora de Decants",
+      icon: "🧮",
+      badge: "PRO",
+      badgeColor: "amber",
+    },
+    {
       id: "settings",
       label: "Tienda & Cobros QR",
       icon: "⚙️",

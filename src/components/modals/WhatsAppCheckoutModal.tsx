@@ -24,6 +24,7 @@ import {
   buildWhatsAppLink,
 } from "@/lib/utils";
 import { useReceipt, type ReceiptData } from "@/hooks/useReceipt";
+import { useUserPreferences } from "@/context/UserPreferencesContext";
 import { BaseModal } from "./BaseModal";
 
 export interface WhatsAppCheckoutModalProps {
@@ -45,17 +46,38 @@ export function WhatsAppCheckoutModal({ isOpen, onClose }: WhatsAppCheckoutModal
   } = useCart();
 
   const { downloadReceipt, isGenerating: isGeneratingPdf } = useReceipt();
+  const { preferences, updatePreferences } = useUserPreferences();
 
   const [checkoutMode, setCheckoutMode] = useState<"order" | "quote">("order");
-  const [fullName, setFullName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [department, setDepartment] = useState(selectedShipping?.department || "La Paz");
-  const [city, setCity] = useState(selectedShipping?.city || "La Paz");
-  const [address, setAddress] = useState("");
+  const [fullName, setFullName] = useState(() => (preferences.saveOnCheckout ? preferences.fullName : ""));
+  const [phone, setPhone] = useState(() => (preferences.saveOnCheckout ? preferences.phone : ""));
+  const [department, setDepartment] = useState(
+    () => (preferences.saveOnCheckout && preferences.department) || selectedShipping?.department || "La Paz"
+  );
+  const [city, setCity] = useState(
+    () => (preferences.saveOnCheckout && preferences.city) || selectedShipping?.city || "La Paz"
+  );
+  const [address, setAddress] = useState(() => (preferences.saveOnCheckout ? preferences.address : ""));
   const [notes, setNotes] = useState("");
-  const [preferredNumber, setPreferredNumber] = useState<"65947174" | "65867500">("65947174");
+  const [preferredNumber, setPreferredNumber] = useState<"65947174" | "65867500">(
+    () => (preferences.saveOnCheckout && preferences.preferredNumber) || "65947174"
+  );
+  const [rememberMyDetails, setRememberMyDetails] = useState(() => preferences.saveOnCheckout ?? true);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleLoadPreferences = () => {
+    if (preferences.fullName) setFullName(preferences.fullName);
+    if (preferences.phone) setPhone(preferences.phone);
+    if (preferences.department) {
+      setDepartment(preferences.department);
+      const found = BOLIVIA_DEPARTMENTS.find((d) => d.department === preferences.department);
+      if (found) setSelectedShipping(found);
+    }
+    if (preferences.city) setCity(preferences.city);
+    if (preferences.address) setAddress(preferences.address);
+    if (preferences.preferredNumber) setPreferredNumber(preferences.preferredNumber);
+  };
 
   // Estado post-confirmación
   const [submittedOrderNumber, setSubmittedOrderNumber] = useState<string | null>(null);
@@ -201,6 +223,19 @@ export function WhatsAppCheckoutModal({ isOpen, onClose }: WhatsAppCheckoutModal
       }).catch((err) => console.error("Error al registrar pedido en backend:", err));
     }
 
+    // Guardar o actualizar preferencias del usuario si la casilla está marcada
+    if (rememberMyDetails) {
+      updatePreferences({
+        fullName: fullName.trim(),
+        phone: phone.trim(),
+        department,
+        city: city.trim(),
+        address: address.trim(),
+        preferredNumber,
+        saveOnCheckout: true,
+      });
+    }
+
     // Abrir ventana de WhatsApp y limpiar carrito
     setTimeout(() => {
       window.open(whatsappUrl, "_blank");
@@ -331,6 +366,23 @@ export function WhatsAppCheckoutModal({ isOpen, onClose }: WhatsAppCheckoutModal
               📑 Solicitar Cotización Formal
             </button>
           </div>
+
+          {/* Badge Informativo de Preferencias Guardadas */}
+          {preferences.fullName && (
+            <button
+              type="button"
+              onClick={handleLoadPreferences}
+              className="w-full flex items-center justify-between px-3.5 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-xs text-amber-300 transition-colors text-left cursor-pointer"
+              title="Clic para re-aplicar tus datos guardados"
+            >
+              <span className="flex items-center gap-1.5 font-medium">
+                ✨ <span>Datos cargados desde tus preferencias</span>
+              </span>
+              <span className="font-bold text-white font-mono text-[11px] truncate max-w-[140px]">
+                {preferences.fullName}
+              </span>
+            </button>
+          )}
 
           {/* Resumen Compacto */}
           <div className="p-4 rounded-2xl bg-zinc-900/60 border border-zinc-800/80 space-y-2 text-xs">
@@ -537,6 +589,17 @@ export function WhatsAppCheckoutModal({ isOpen, onClose }: WhatsAppCheckoutModal
                 </p>
               </div>
             </div>
+
+            {/* Checkbox para recordar datos de envío */}
+            <label className="flex items-center gap-2.5 text-xs text-zinc-300 cursor-pointer pt-1 px-1">
+              <input
+                type="checkbox"
+                checked={rememberMyDetails}
+                onChange={(e) => setRememberMyDetails(e.target.checked)}
+                className="w-4 h-4 rounded bg-zinc-900 border-zinc-700 text-amber-500 focus:ring-0 cursor-pointer"
+              />
+              <span>Guardar mis datos de entrega y contacto para mis próximas compras</span>
+            </label>
 
             {/* Acciones del formulario: Botón principal y botón de Comprobante PDF previo */}
             <div className="space-y-2 pt-2">

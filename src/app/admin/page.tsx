@@ -38,6 +38,7 @@ import {
   UsersCrmTab,
   SalesFinancesTab,
   CouponsPromosTab,
+  DecantingCalculatorTab,
   AuditLogsTab,
   StoreSettingsTab,
 } from "@/components/admin/tabs";
@@ -80,6 +81,10 @@ export default function AdminDashboardPage() {
   const [accountHolder, setAccountHolder] = useState("Vibes Parfum S.R.L.");
   const [accountNumber, setAccountNumber] = useState("201-5049382-3-19");
   const [freeShippingThreshold, setFreeShippingThreshold] = useState("350");
+  const [announcementText, setAnnouncementText] = useState(
+    "Envíos asegurados a toda Bolivia (La Paz, Santa Cruz, Cochabamba y departamentos) • Cupón 10% OFF: VIBES10"
+  );
+  const [isAnnouncementActive, setIsAnnouncementActive] = useState(true);
   const [savedSettingsSuccess, setSavedSettingsSuccess] = useState(false);
 
   // Estados de Modales
@@ -407,6 +412,25 @@ export default function AdminDashboardPage() {
     window.open(`https://wa.me/${finalPhone}?text=${encodeURIComponent(message)}`, "_blank");
   };
 
+  const handleDispatchCourier = (
+    orderId: string,
+    courierName: string,
+    trackingNumber: string,
+    terminalPoint: string,
+    freightNote: string
+  ) => {
+    setOrdersList((prev) =>
+      prev.map((ord) => {
+        if (ord.id !== orderId) return ord;
+        return {
+          ...ord,
+          status: "Enviado",
+          courier: `${courierName} (Guía: ${trackingNumber} • ${terminalPoint} • ${freightNote})`,
+        };
+      })
+    );
+  };
+
   // Handlers para Moderación de Reseñas
   const handleToggleReviewStatus = (id: string, newStatus: "approved" | "pending" | "hidden") => {
     setReviewsList((prev) =>
@@ -601,6 +625,7 @@ export default function AdminDashboardPage() {
             orders={ordersList}
             onToggleOrderStatus={handleToggleOrderStatus}
             onNotifyCustomerWhatsApp={handleNotifyCustomerWhatsApp}
+            onDispatchCourier={handleDispatchCourier}
           />
         )}
 
@@ -641,6 +666,10 @@ export default function AdminDashboardPage() {
           />
         )}
 
+        {activeTab === "calculator" && (
+          <DecantingCalculatorTab perfumes={perfumesList} />
+        )}
+
         {activeTab === "settings" && (
           <StoreSettingsTab
             bankName={bankName}
@@ -655,6 +684,10 @@ export default function AdminDashboardPage() {
             setWhatsappLine1={setWhatsappLine1}
             whatsappLine2={whatsappLine2}
             setWhatsappLine2={setWhatsappLine2}
+            announcementText={announcementText}
+            setAnnouncementText={setAnnouncementText}
+            isAnnouncementActive={isAnnouncementActive}
+            setIsAnnouncementActive={setIsAnnouncementActive}
             savedSettingsSuccess={savedSettingsSuccess}
             onSaveSettings={handleSaveSettings}
           />

@@ -21,3 +21,6 @@ export type { CustomerPurchaseHistoryModalProps } from "./CustomerPurchaseHistor
 
 export { RemovePerfumeModal } from "./RemovePerfumeModal";
 export type { RemovePerfumeModalProps, RemovalReason } from "./RemovePerfumeModal";
+
+export { CourierDispatchModal } from "./CourierDispatchModal";
+export type { CourierDispatchModalProps } from "./CourierDispatchModal";

@@ -6,6 +6,7 @@ export type AdminTabId =
   | "users"
   | "finances"
   | "coupons"
+  | "calculator"
   | "logs"
   | "settings";
 

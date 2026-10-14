@@ -15,9 +15,16 @@ import {
   Lock,
   ExternalLink,
   User,
+  SlidersHorizontal,
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { WHATSAPP_NUMBERS } from "@/lib/utils";
+import dynamic from "next/dynamic";
+
+const UserPreferencesModal = dynamic(
+  () => import("@/components/modals").then((m) => m.UserPreferencesModal),
+  { ssr: false }
+);
 
 export function Header() {
   const pathname = usePathname();
@@ -25,6 +32,7 @@ export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showWhatsAppMenu, setShowWhatsAppMenu] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [isPreferencesOpen, setIsPreferencesOpen] = useState(false);
 
   const navLinks = [
     { name: "Inicio", href: "/" },
@@ -125,6 +133,20 @@ export function Header() {
                     <p className="text-[10px] uppercase tracking-wider text-zinc-400 font-bold px-2 py-1">
                       Acceso & Cuenta
                     </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowUserMenu(false);
+                        setIsPreferencesOpen(true);
+                      }}
+                      className="w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-zinc-800/80 text-xs font-semibold text-zinc-200 hover:text-white transition-all text-left cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <SlidersHorizontal className="w-4 h-4 text-amber-400" />
+                        <span>Mis Preferencias</span>
+                      </div>
+                      <span className="text-[10px] text-zinc-400">Envío & QR</span>
+                    </button>
                     <Link
                       href="/login"
                       onClick={() => setShowUserMenu(false)}
@@ -280,6 +302,18 @@ export function Header() {
             </Link>
           </div>
 
+          <button
+            type="button"
+            onClick={() => {
+              setMobileMenuOpen(false);
+              setIsPreferencesOpen(true);
+            }}
+            className="w-full flex items-center justify-center gap-2 py-3 px-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-amber-500/30 text-amber-300 text-xs font-bold transition-all cursor-pointer"
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5" />
+            <span>Mis Preferencias de Envío & Pagos</span>
+          </button>
+
           <div className="pt-3 border-t border-zinc-800/80 flex flex-col gap-2">
             <p className="text-xs text-zinc-400 font-semibold uppercase tracking-wider px-1">
               Pedidos por WhatsApp
@@ -305,6 +339,12 @@ export function Header() {
           </div>
         </div>
       )}
+
+      {/* Modal de Preferencias de Comprador */}
+      <UserPreferencesModal
+        isOpen={isPreferencesOpen}
+        onClose={() => setIsPreferencesOpen(false)}
+      />
     </header>
   );
 }

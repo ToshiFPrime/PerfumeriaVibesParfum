@@ -21,6 +21,8 @@ export type { MobileFiltersDrawerProps } from "./MobileFiltersDrawer";
 export { WhatsAppCheckoutModal } from "./WhatsAppCheckoutModal";
 export type { WhatsAppCheckoutModalProps } from "./WhatsAppCheckoutModal";
 
+export { UserPreferencesModal } from "./UserPreferencesModal";
+
 // Admin Dashboard Modals
 export {
   AddPerfumeModal,
@@ -31,6 +33,7 @@ export {
   StockAdjustmentModal,
   CustomerPurchaseHistoryModal,
   RemovePerfumeModal,
+  CourierDispatchModal,
 } from "./admin";
 
 export type {
@@ -42,5 +45,6 @@ export type {
   StockAdjustmentModalProps,
   CustomerPurchaseHistoryModalProps,
   RemovePerfumeModalProps,
+  CourierDispatchModalProps,
   RemovalReason,
 } from "./admin";

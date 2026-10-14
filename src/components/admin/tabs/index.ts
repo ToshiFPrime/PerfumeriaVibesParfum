@@ -5,5 +5,6 @@ export { ReviewsModerationTab } from "./ReviewsModerationTab";
 export { UsersCrmTab } from "./UsersCrmTab";
 export { SalesFinancesTab } from "./SalesFinancesTab";
 export { CouponsPromosTab } from "./CouponsPromosTab";
+export { DecantingCalculatorTab } from "./DecantingCalculatorTab";
 export { AuditLogsTab } from "./AuditLogsTab";
 export { StoreSettingsTab } from "./StoreSettingsTab";

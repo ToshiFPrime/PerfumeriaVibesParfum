@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { CartProvider } from "@/context/CartContext";
+import { UserPreferencesProvider } from "@/context/UserPreferencesContext";
 import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
@@ -78,28 +79,30 @@ export default function RootLayout({
   return (
     <html lang="es" className={`${geistSans.variable} ${geistMono.variable} dark h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-zinc-950 text-zinc-100 font-sans selection:bg-zinc-700 selection:text-white">
-        <CartProvider>
-          {/* PWA Service Worker Registration */}
-          <PwaRegister />
+        <UserPreferencesProvider>
+          <CartProvider>
+            {/* PWA Service Worker Registration */}
+            <PwaRegister />
 
-          {/* Top Announcement Alert */}
-          <AnnouncementBar />
+            {/* Top Announcement Alert */}
+            <AnnouncementBar />
 
-          {/* Main Navigation Header */}
-          <Header />
+            {/* Main Navigation Header */}
+            <Header />
 
-          {/* Dynamic Page Content */}
-          <main className="flex-1">{children}</main>
+            {/* Dynamic Page Content */}
+            <main className="flex-1">{children}</main>
 
-          {/* Global Cart Slide-over Drawer & Checkout Modal */}
-          <CartDrawer />
+            {/* Global Cart Slide-over Drawer & Checkout Modal */}
+            <CartDrawer />
 
-          {/* PWA Install Prompt Banner */}
-          <InstallPwaBanner />
+            {/* PWA Install Prompt Banner */}
+            <InstallPwaBanner />
 
-          {/* Footer with Store Seals & Credits */}
-          <Footer />
-        </CartProvider>
+            {/* Footer with Store Seals & Credits */}
+            <Footer />
+          </CartProvider>
+        </UserPreferencesProvider>
       </body>
     </html>
   );

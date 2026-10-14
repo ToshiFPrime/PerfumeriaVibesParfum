@@ -16,3 +16,4 @@ export { useReceipt } from "./useReceipt";
 export type { UseReceiptReturn, ReceiptData, ReceiptItem } from "./useReceipt";
 export { useStockMutation } from "./useStockMutation";
 export type { StockMutationParams, UseStockMutationOptions } from "./useStockMutation";
+export { useUserPreferences } from "./useUserPreferences";

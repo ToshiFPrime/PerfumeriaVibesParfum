@@ -2,9 +2,10 @@
 
 import React from "react";
 import Image from "next/image";
-import { Search, Plus, Ban, SlidersHorizontal, Zap, RotateCcw, Trash2, EyeOff } from "lucide-react";
+import { Search, Plus, Ban, SlidersHorizontal, Zap, RotateCcw, Trash2, EyeOff, Download } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
 import type { Product, ProductVariant } from "@/types";
+import { exportCatalogToCsv } from "@/lib/export/exportCsv";
 
 export type StockFilterOption = "all" | "low" | "ok" | "out" | "paused";
 
@@ -134,6 +135,21 @@ export function CatalogStockTab({
               <span className="text-[10px] opacity-80">({pausedCount})</span>
             </button>
           </div>
+
+          <button
+            type="button"
+            onClick={() =>
+              exportCatalogToCsv(
+                perfumes,
+                `inventario_vibes_parfum_${new Date().toISOString().slice(0, 10)}.csv`
+              )
+            }
+            className="min-h-[44px] px-3.5 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/80 text-zinc-200 hover:text-white font-semibold text-xs flex items-center gap-2 transition-all cursor-pointer active:scale-95 shrink-0"
+            title="Exportar catálogo e inventario completo a Excel / CSV"
+          >
+            <Download className="w-4 h-4 text-emerald-400" />
+            <span className="hidden sm:inline">Exportar Inventario</span>
+          </button>
 
           <button
             type="button"
