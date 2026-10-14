@@ -46,7 +46,8 @@ function LoginForm() {
         setMessage({ text: res.message || "Acceso verificado. Entrando...", type: "success" });
         const targetUrl = res.redirectTo || "/admin";
         setTimeout(() => {
-          window.location.href = targetUrl;
+          router.push(targetUrl);
+          router.refresh();
         }, 300);
       } else {
         setIsLoading(false);
@@ -64,7 +65,8 @@ function LoginForm() {
           setMessage({ text: res.message, type: "success" });
           const targetUrl = res.redirectTo || "/admin";
           setTimeout(() => {
-            window.location.href = targetUrl;
+            router.push(targetUrl);
+            router.refresh();
           }, 300);
         } else {
           setIsLoading(false);
@@ -99,15 +101,16 @@ function LoginForm() {
         setMessage({ text: "¡Acceso concedido! Abriendo Panel de Administración...", type: "success" });
         const targetUrl = res.redirectTo || "/admin";
         setTimeout(() => {
-          window.location.href = targetUrl;
+          router.push(targetUrl);
+          router.refresh();
         }, 200);
       } else {
         // Redirección directa infalible como fallback
-        window.location.href = `/api/auth/quick-access?role=admin&redirect=${encodeURIComponent(redirectParam)}`;
+        router.push(`/api/auth/quick-access?role=admin&redirect=${encodeURIComponent(redirectParam)}`);
       }
     } catch {
       // Fallback infalible en túneles temporales
-      window.location.href = `/api/auth/quick-access?role=admin&redirect=${encodeURIComponent(redirectParam)}`;
+      router.push(`/api/auth/quick-access?role=admin&redirect=${encodeURIComponent(redirectParam)}`);
     }
   };
 
@@ -118,7 +121,7 @@ function LoginForm() {
     setPassword("Cliente2026!");
     setMessage({ text: "Sesión de Cliente iniciada. Redirigiendo al Catálogo...", type: "success" });
     setTimeout(() => {
-      window.location.href = "/catalogo";
+      router.push("/catalogo");
     }, 200);
   };
 

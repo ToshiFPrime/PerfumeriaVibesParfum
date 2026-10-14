@@ -12,7 +12,6 @@ import {
   MapPin,
   ArrowUpDown,
   RotateCcw,
-  Crown,
   ShoppingBag,
 } from "lucide-react";
 import { formatPrice } from "@/lib/utils";

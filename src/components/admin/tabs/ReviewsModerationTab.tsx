@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { Star, Plus, Check, Trash2, Search, Filter, RotateCcw, ShieldCheck, Heart } from "lucide-react";
+import { Star, Plus, Check, Trash2, Search, RotateCcw, ShieldCheck, Heart } from "lucide-react";
 import type { AdminReview } from "@/types/admin";
 
 interface ReviewsModerationTabProps {

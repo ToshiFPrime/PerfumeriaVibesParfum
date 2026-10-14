@@ -7,19 +7,7 @@ import {
   LayoutGrid,
   Search,
   X,
-  Package,
-  Truck,
-  Users,
-  Settings,
-  Sparkles,
   Command,
-  ArrowRight,
-  Calculator,
-  History,
-  TrendingUp,
-  Tag,
-  Star,
-  Layers,
 } from "lucide-react";
 import type { AdminTabId } from "@/types/admin";
 
