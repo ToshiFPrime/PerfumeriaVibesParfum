@@ -9,23 +9,48 @@ export function middleware(request: NextRequest) {
 
     let isValid = false;
     if (adminSessionCookie?.value) {
-      if (adminSessionCookie.value === "admin_authenticated_token_v1") {
+      const val = adminSessionCookie.value;
+      if (val === "admin_authenticated_token_v1") {
         isValid = true;
       } else {
+        // Intentar parsear Base64
         try {
-          const data = JSON.parse(adminSessionCookie.value);
+          const jsonStr = atob(val);
+          const data = JSON.parse(jsonStr);
           if (data && (!data.exp || data.exp > Date.now())) {
             isValid = true;
           }
-        } catch {
-          isValid = false;
+        } catch {}
+
+        // Intentar parsear JSON directo o URL-encoded
+        if (!isValid) {
+          try {
+            let raw = val;
+            if (raw.includes("%")) {
+              try {
+                raw = decodeURIComponent(raw);
+              } catch {}
+            }
+            const data = JSON.parse(raw);
+            if (data && (!data.exp || data.exp > Date.now())) {
+              isValid = true;
+            }
+          } catch {}
         }
       }
     }
 
     // Si no existe la cookie o está expirada, redirigir al login
     if (!isValid) {
-      const loginUrl = new URL("/login", request.url);
+      const forwardedHost = request.headers.get("x-forwarded-host") || request.headers.get("host");
+      const forwardedProto = request.headers.get("x-forwarded-proto") || (forwardedHost?.includes("localhost") ? "http" : "https");
+
+      let loginUrl: URL;
+      if (forwardedHost) {
+        loginUrl = new URL(`${forwardedProto}://${forwardedHost}/login`);
+      } else {
+        loginUrl = new URL("/login", request.url);
+      }
       loginUrl.searchParams.set("redirect", pathname);
       return NextResponse.redirect(loginUrl);
     }

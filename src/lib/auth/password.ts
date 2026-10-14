@@ -44,7 +44,7 @@ export interface AdminSessionPayload {
 }
 
 /**
- * Genera el payload de sesión administrativa codificado en JSON para la cookie HttpOnly
+ * Genera el payload de sesión administrativa codificado en Base64 para evitar problemas de codificación de cookies
  */
 export function createAdminSessionCookieValue(userEmail: string): string {
   const now = Date.now();
@@ -55,7 +55,7 @@ export function createAdminSessionCookieValue(userEmail: string): string {
     exp: now + 7 * 24 * 60 * 60 * 1000, // 7 días de validez
     nonce: crypto.randomBytes(16).toString("hex"),
   };
-  return JSON.stringify(session);
+  return Buffer.from(JSON.stringify(session)).toString("base64");
 }
 
 /**
@@ -69,13 +69,30 @@ export function validateAdminSessionValue(cookieValue: string | undefined): bool
     return true;
   }
 
+  // 1. Probar decodificación Base64
   try {
-    const session: AdminSessionPayload = JSON.parse(cookieValue);
-    if (!session || typeof session !== "object") return false;
-    if (session.role !== "super_admin" && session.role !== "admin") return false;
-    if (session.exp && session.exp < Date.now()) return false;
-    return true;
-  } catch {
-    return false;
-  }
+    const jsonStr = Buffer.from(cookieValue, "base64").toString("utf-8");
+    const session: AdminSessionPayload = JSON.parse(jsonStr);
+    if (session && (session.role === "super_admin" || session.role === "admin")) {
+      if (!session.exp || session.exp > Date.now()) return true;
+    }
+  } catch {}
+
+  // 2. Probar JSON directo o URL-encoded
+  try {
+    let raw = cookieValue;
+    if (raw.includes("%")) {
+      try {
+        raw = decodeURIComponent(raw);
+      } catch {}
+    }
+    const session: AdminSessionPayload = JSON.parse(raw);
+    if (session && typeof session === "object") {
+      if (session.role === "super_admin" || session.role === "admin") {
+        if (!session.exp || session.exp > Date.now()) return true;
+      }
+    }
+  } catch {}
+
+  return false;
 }

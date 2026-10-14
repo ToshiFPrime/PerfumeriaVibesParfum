@@ -21,7 +21,11 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const sessionData = JSON.parse(sessionCookie.value);
+    let raw = sessionCookie.value;
+    if (raw.includes("%7B") || raw.includes("%22")) {
+      raw = decodeURIComponent(raw);
+    }
+    const sessionData = JSON.parse(raw);
     // Verificar si expiró
     if (sessionData.exp && sessionData.exp < Date.now()) {
       return NextResponse.json({

@@ -2,6 +2,22 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   compress: true,
+  // Permitir túneles de desarrollo como Cloudflare Quick Tunnels y Localtunnel
+  allowedDevOrigins: [
+    "*.trycloudflare.com",
+    "*.loca.lt",
+    "localhost:3000",
+  ],
+  experimental: {
+    serverActions: {
+      allowedOrigins: [
+        "*.trycloudflare.com",
+        "*.loca.lt",
+        "*.vercel.app",
+        "localhost:3000",
+      ],
+    },
+  },
   images: {
     formats: ["image/avif", "image/webp"],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920],
