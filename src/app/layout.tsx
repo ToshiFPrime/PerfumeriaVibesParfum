@@ -9,6 +9,7 @@ import { Footer } from "@/components/layout/Footer";
 import { CartDrawer } from "@/components/cart/CartDrawer";
 import { PwaRegister } from "@/components/common/PwaRegister";
 import { InstallPwaBanner } from "@/components/common/InstallPwaBanner";
+import { Analytics } from "@vercel/analytics/next";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -103,6 +104,7 @@ export default function RootLayout({
             <Footer />
           </CartProvider>
         </UserPreferencesProvider>
+        <Analytics />
       </body>
     </html>
   );
