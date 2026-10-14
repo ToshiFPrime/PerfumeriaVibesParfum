@@ -1,0 +1,9 @@
+export { CatalogStockTab } from "./CatalogStockTab";
+export { BrandsCategoriesTab } from "./BrandsCategoriesTab";
+export { OrdersDispatchTab } from "./OrdersDispatchTab";
+export { ReviewsModerationTab } from "./ReviewsModerationTab";
+export { UsersCrmTab } from "./UsersCrmTab";
+export { SalesFinancesTab } from "./SalesFinancesTab";
+export { CouponsPromosTab } from "./CouponsPromosTab";
+export { AuditLogsTab } from "./AuditLogsTab";
+export { StoreSettingsTab } from "./StoreSettingsTab";
