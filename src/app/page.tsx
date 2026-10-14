@@ -24,13 +24,13 @@ export default function HomePage() {
       <PromoBanner />
 
       {/* 3. Fragancias Más Vendidas */}
-      <BestSellersSection products={featuredBestSellers} />
+      {featuredBestSellers.length > 0 && <BestSellersSection products={featuredBestSellers} />}
 
       {/* 4. Rueda & Familias Olfativas */}
       <OlfactoryWheel />
 
       {/* 5. Colección Nicho de Lujo */}
-      <NicheCollectionSection products={featuredNiche} />
+      {featuredNiche.length > 0 && <NicheCollectionSection products={featuredNiche} />}
 
       {/* 6. Cotizador Rápido de Envíos en Bolivia */}
       <section className="py-14 bg-zinc-950 border-t border-zinc-800/80 px-4 sm:px-6 lg:px-8">

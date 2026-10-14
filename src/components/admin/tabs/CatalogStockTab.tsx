@@ -349,7 +349,27 @@ export function CatalogStockTab({
       </div>
 
       {/* Grid de Productos */}
-      {filteredPerfumes.length === 0 ? (
+      {perfumes.length === 0 ? (
+        <div className="p-12 text-center rounded-3xl bg-zinc-900/40 border border-zinc-800/80 space-y-4 max-w-lg mx-auto">
+          <div className="w-16 h-16 rounded-2xl bg-zinc-800/80 border border-zinc-700/60 flex items-center justify-center mx-auto text-amber-400 shadow-xl shadow-amber-950/20">
+            <Sparkles className="w-8 h-8" />
+          </div>
+          <div className="space-y-1">
+            <h4 className="text-base font-bold text-white">¡Catálogo listo para estrenar!</h4>
+            <p className="text-xs text-zinc-400 leading-relaxed">
+              El catálogo está completamente limpio. Haz clic en el botón de abajo para registrar tu primera fragancia con sus fotos, notas, decants y existencias.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onOpenAddPerfume}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white text-zinc-950 font-bold text-xs hover:bg-zinc-200 transition-all cursor-pointer shadow-lg active:scale-95"
+          >
+            <Plus className="w-4 h-4 text-zinc-950" />
+            <span>+ Añadir Primera Fragancia</span>
+          </button>
+        </div>
+      ) : filteredPerfumes.length === 0 ? (
         <div className="p-12 text-center rounded-3xl bg-zinc-900/40 border border-zinc-800/80 space-y-3">
           <SlidersHorizontal className="w-10 h-10 text-zinc-600 mx-auto" />
           <h4 className="text-sm font-bold text-white">No hay fragancias que coincidan con estos filtros</h4>
