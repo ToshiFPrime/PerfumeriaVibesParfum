@@ -55,7 +55,7 @@ export function useAdminCatalogStock(
             reason: delta > 0 ? "reingreso_lote" : "ajuste_inventario",
             reasonLabel: delta > 0 ? "Reingreso Rápido (+)" : "Descuento Rápido (-)",
             notes: delta > 0 ? "Aumento rápido de 1 unidad" : "Descuento de 1 unidad desde panel",
-            adminName: "Juan Pablo V. (Super Admin)",
+            adminName: "Super Admin",
           };
           onLogCreated(log);
         }
@@ -92,7 +92,7 @@ export function useAdminCatalogStock(
             reason: newStock === 0 ? "marcado_agotado" : "ajuste_inventario",
             reasonLabel: newStock === 0 ? "Marcado Agotado" : "Ajuste Directo Teclado",
             notes: `Edición directa de stock de ${targetVariant.stock} a ${newStock} u.`,
-            adminName: "Juan Pablo V. (Super Admin)",
+            adminName: "Super Admin",
           };
           onLogCreated(log);
         }
@@ -129,7 +129,7 @@ export function useAdminCatalogStock(
                 reason: "marcado_agotado",
                 reasonLabel: "Agotado Masivo",
                 notes: "Todas las variantes marcadas en 0 unidades",
-                adminName: "Juan Pablo V. (Super Admin)",
+                adminName: "Super Admin",
               });
             }
           });
@@ -163,7 +163,7 @@ export function useAdminCatalogStock(
               reason: "reingreso_lote",
               reasonLabel: "Reingreso Lote (+5)",
               notes: `Añadidas ${amount} unidades a la presentación ${v.label}`,
-              adminName: "Juan Pablo V. (Super Admin)",
+              adminName: "Super Admin",
             });
           });
         }
@@ -212,7 +212,7 @@ export function useAdminCatalogStock(
             reason,
             reasonLabel: reasonLabels[reason] || "Ajuste Especial",
             notes: notes || "Sin notas adicionales",
-            adminName: "Juan Pablo V. (Super Admin)",
+            adminName: "Super Admin",
           });
         }
         return {
@@ -252,7 +252,7 @@ export function useAdminCatalogStock(
             reason: "baja_producto",
             reasonLabel: reasonLabel || "Baja de Producto",
             notes: `Acción: ${action} • Motivo: ${reasonLabel}${notes ? ` • ${notes}` : ""}`,
-            adminName: "Juan Pablo V. (Super Admin)",
+            adminName: "Super Admin",
           });
         }
         return {
@@ -284,7 +284,7 @@ export function useAdminCatalogStock(
             reason: "reingreso_lote",
             reasonLabel: "Reactivación de Catálogo",
             notes: "Producto reactivado en la tienda visible",
-            adminName: "Juan Pablo V. (Super Admin)",
+            adminName: "Super Admin",
           });
         }
         return { ...prod, isActive: true, statusReason: undefined };
