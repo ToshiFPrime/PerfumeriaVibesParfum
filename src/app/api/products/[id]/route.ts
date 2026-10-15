@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { MOCK_PERFUMES } from "@/lib/data/mockPerfumes";
+import {
+  getProductByIdOrSlugDb,
+  updateProductDb,
+  deleteProductDb,
+} from "@/lib/supabase/service";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 const updateProductSchema = z.object({
@@ -32,11 +37,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const decodedId = decodeURIComponent(id).toLowerCase();
-
-  const product = MOCK_PERFUMES.find(
-    (p) => p.id.toLowerCase() === decodedId || p.slug.toLowerCase() === decodedId
-  );
+  const product = await getProductByIdOrSlugDb(id);
 
   if (!product) {
     return NextResponse.json(
@@ -66,16 +67,6 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const product = MOCK_PERFUMES.find(
-    (p) => p.id === id || p.slug === id
-  );
-
-  if (!product) {
-    return NextResponse.json(
-      { error: `Perfume con ID '${id}' no encontrado` },
-      { status: 404 }
-    );
-  }
 
   try {
     const body = await request.json();
@@ -88,11 +79,18 @@ export async function PATCH(
       );
     }
 
-    const updated = {
-      ...product,
-      ...parsed.data,
-      updatedAt: new Date().toISOString(),
-    };
+    const updated = await updateProductDb(id, parsed.data);
+
+    if (!updated) {
+      return NextResponse.json(
+        { error: `No se pudo actualizar el perfume con ID '${id}'` },
+        { status: 404 }
+      );
+    }
+
+    revalidatePath("/catalogo");
+    revalidatePath("/api/products");
+    revalidatePath("/admin");
 
     return NextResponse.json({
       success: true,
@@ -121,22 +119,22 @@ export async function DELETE(
   }
 
   const { id } = await params;
-  const product = MOCK_PERFUMES.find(
-    (p) => p.id === id || p.slug === id
-  );
+  const success = await deleteProductDb(id);
 
-  if (!product) {
+  if (!success) {
     return NextResponse.json(
-      { error: `Perfume con ID '${id}' no encontrado` },
+      { error: `No se pudo retirar el perfume con ID '${id}'` },
       { status: 404 }
     );
   }
 
-  product.isActive = false;
+  revalidatePath("/catalogo");
+  revalidatePath("/api/products");
+  revalidatePath("/admin");
 
   return NextResponse.json({
     success: true,
-    message: `El perfume '${product.name}' ha sido retirado del catálogo activo`,
-    productId: product.id,
+    message: `El perfume con ID '${id}' ha sido retirado del catálogo activo`,
+    productId: id,
   });
 }

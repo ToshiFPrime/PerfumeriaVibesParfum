@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
-import { MOCK_PERFUMES } from "@/lib/data/mockPerfumes";
+import { getProductsDb } from "@/lib/supabase/service";
 
 // GET: Agrupación de familias olfativas, marcas y géneros con conteos para filtros dinámicos
 export async function GET() {
+  const products = await getProductsDb();
   const families: Record<string, number> = {};
   const brands: Record<string, number> = {};
   const genders: Record<string, number> = {
@@ -11,7 +12,7 @@ export async function GET() {
     Unisex: 0,
   };
 
-  MOCK_PERFUMES.forEach((perfume) => {
+  products.forEach((perfume) => {
     if (perfume.isActive !== false) {
       // Familia olfativa
       if (perfume.olfactoryFamily) {
@@ -30,7 +31,7 @@ export async function GET() {
 
   return NextResponse.json(
     {
-      totalProducts: MOCK_PERFUMES.filter((p) => p.isActive !== false).length,
+      totalProducts: products.filter((p) => p.isActive !== false).length,
       families: Object.entries(families).map(([name, count]) => ({ name, count })),
       brands: Object.entries(brands).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count),
       genders: Object.entries(genders).map(([name, count]) => ({ name, count })),

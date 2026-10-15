@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { MOCK_PERFUMES } from "@/lib/data/mockPerfumes";
 import type { Product, ProductVariant } from "@/types";
 import type { StockMovementLog, StockAdjustmentReason } from "@/types/admin";
@@ -15,6 +15,28 @@ export function useAdminCatalogStock(
   const [isAddPerfumeOpen, setIsAddPerfumeOpen] = useState(false);
   const [adjustmentTarget, setAdjustmentTarget] = useState<{ product: Product; variant: ProductVariant } | null>(null);
   const [removalTarget, setRemovalTarget] = useState<Product | null>(null);
+
+  // Carga inicial y reactiva desde la base de datos Supabase
+  useEffect(() => {
+    let isMounted = true;
+    const fetchCatalog = async () => {
+      try {
+        const res = await fetch("/api/products?limit=100");
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted) {
+            setPerfumesList(data.products || []);
+          }
+        }
+      } catch (err) {
+        console.warn("Error al cargar productos desde la base de datos:", err);
+      }
+    };
+    fetchCatalog();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Sincronización en segundo plano con endpoints API (Optimistic UI)
   const syncStockToApi = async (
@@ -263,6 +285,19 @@ export function useAdminCatalogStock(
       })
     );
     setRemovalTarget(null);
+
+    // Persistencia en base de datos Supabase
+    if (action === "delete") {
+      fetch(`/api/products/${productId}`, { method: "DELETE" }).catch((err) =>
+        console.warn("Fallo al eliminar perfume en DB:", err)
+      );
+    } else {
+      fetch(`/api/products/${productId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: false }),
+      }).catch((err) => console.warn("Fallo al pausar perfume en DB:", err));
+    }
   };
 
   const handleReactivateProduct = (productId: string) => {
@@ -290,11 +325,37 @@ export function useAdminCatalogStock(
         return { ...prod, isActive: true, statusReason: undefined };
       })
     );
+
+    // Persistencia en base de datos Supabase
+    fetch(`/api/products/${productId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isActive: true }),
+    }).catch((err) => console.warn("Fallo al reactivar perfume en DB:", err));
   };
 
-  const handleAddPerfume = (newPerfume: Product) => {
+  const handleAddPerfume = async (newPerfume: Product) => {
     setPerfumesList((prev) => [newPerfume, ...prev]);
     setIsAddPerfumeOpen(false);
+
+    try {
+      const res = await fetch("/api/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newPerfume),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.product) {
+          setPerfumesList((prev) =>
+            prev.map((p) => (p.id === newPerfume.id ? data.product : p))
+          );
+        }
+      }
+    } catch (err) {
+      console.error("Error al registrar perfume en Supabase:", err);
+    }
   };
 
   return {

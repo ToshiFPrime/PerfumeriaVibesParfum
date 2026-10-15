@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { INITIAL_BRANDS, INITIAL_STOCK_LOGS } from "@/lib/data/adminMockData";
 import { ACTIVE_COUPONS } from "@/lib/data/shippingRates";
 import { WHATSAPP_NUMBERS } from "@/lib/utils";
@@ -9,6 +9,27 @@ import type { DiscountCoupon } from "@/types";
 
 export function useAdminSettings() {
   const [brandsList, setBrandsList] = useState<PerfumeBrand[]>(INITIAL_BRANDS);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchBrands = async () => {
+      try {
+        const res = await fetch("/api/brands");
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted && data.brands && data.brands.length > 0) {
+            setBrandsList(data.brands);
+          }
+        }
+      } catch (err) {
+        console.warn("Error al cargar marcas desde API:", err);
+      }
+    };
+    fetchBrands();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
   const [couponsList, setCouponsList] = useState<DiscountCoupon[]>(ACTIVE_COUPONS);
   const [stockLogs, setStockLogs] = useState<StockMovementLog[]>(INITIAL_STOCK_LOGS);
 

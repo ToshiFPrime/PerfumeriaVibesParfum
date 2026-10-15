@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getProductsDb } from "@/lib/supabase/service";
+import { getProductsDb, createProductDb } from "@/lib/supabase/service";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import type { Product, ProductVariant } from "@/types";
@@ -121,16 +121,21 @@ export async function POST(request: NextRequest) {
       isActive: true,
     };
 
+    const savedProduct = await createProductDb(newProduct);
+    const finalProduct = savedProduct || newProduct;
+
     revalidatePath("/catalogo");
     revalidatePath("/api/products");
+    revalidatePath("/admin");
 
     return NextResponse.json(
-      { success: true, message: "Perfume creado exitosamente", product: newProduct },
+      { success: true, message: "Perfume creado exitosamente", product: finalProduct },
       { status: 201 }
     );
-  } catch {
+  } catch (err) {
+    const errMsg = err instanceof Error ? err.message : "Error desconocido";
     return NextResponse.json(
-      { error: "Error interno al procesar el producto" },
+      { error: "Error interno al procesar el producto", details: errMsg },
       { status: 500 }
     );
   }

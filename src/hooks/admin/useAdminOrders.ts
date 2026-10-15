@@ -1,12 +1,33 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { INITIAL_ORDERS } from "@/lib/data/adminMockData";
 import { formatPrice } from "@/lib/utils";
 import type { AdminOrder } from "@/types/admin";
 
 export function useAdminOrders() {
   const [ordersList, setOrdersList] = useState<AdminOrder[]>(INITIAL_ORDERS);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchOrders = async () => {
+      try {
+        const res = await fetch("/api/orders");
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted) {
+            setOrdersList(data.orders || []);
+          }
+        }
+      } catch (err) {
+        console.warn("Error al cargar pedidos desde Supabase:", err);
+      }
+    };
+    fetchOrders();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleToggleOrderStatus = (orderId: string) => {
     let targetNextStatus: AdminOrder["status"] = "Pendiente";

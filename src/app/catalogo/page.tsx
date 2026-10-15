@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, Suspense } from "react";
+import React, { useState, useMemo, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Search,
@@ -17,10 +17,33 @@ import { CatalogFilters } from "@/components/catalog/CatalogFilters";
 import { CatalogCategoryPills } from "@/components/catalog/CatalogCategoryPills";
 import { MobileFiltersDrawer } from "@/components/modals";
 import { useDebounce } from "@/hooks/useDebounce";
-import type { FilterState, OlfactoryFamily, Gender } from "@/types";
+import type { FilterState, OlfactoryFamily, Gender, Product } from "@/types";
 
 function CatalogContent() {
   const searchParams = useSearchParams();
+
+  const [allProducts, setAllProducts] = useState<Product[]>(MOCK_PERFUMES);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchCatalog = async () => {
+      try {
+        const res = await fetch("/api/products?limit=100");
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted && data.products) {
+            setAllProducts(data.products);
+          }
+        }
+      } catch (err) {
+        console.warn("Fallo al cargar catálogo dinámico:", err);
+      }
+    };
+    fetchCatalog();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const initialFamily = searchParams.get("familia") as OlfactoryFamily | null;
   const initialGender = searchParams.get("genero") as Gender | null;
@@ -48,7 +71,7 @@ function CatalogContent() {
 
   // Filtrado y ordenación
   const filteredProducts = useMemo(() => {
-    return MOCK_PERFUMES.filter((product) => {
+    return allProducts.filter((product) => {
       // Ignorar fragancias pausadas o retiradas del catálogo
       if (product.isActive === false) return false;
 
@@ -138,10 +161,9 @@ function CatalogContent() {
       if (filters.sortBy === "newest") {
         return (b.isNewArrival ? 1 : 0) - (a.isNewArrival ? 1 : 0);
       }
-      // default: popular / best seller
       return (b.isBestSeller ? 1 : 0) - (a.isBestSeller ? 1 : 0);
     });
-  }, [filters, debouncedSearchQuery]);
+  }, [filters, debouncedSearchQuery, allProducts]);
 
   const handleResetFilters = () => {
     setFilters({

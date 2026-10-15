@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { recordStockMovementDb } from "@/lib/supabase/service";
+import { recordStockMovementDb, updateVariantStockDb } from "@/lib/supabase/service";
+import { revalidatePath } from "next/cache";
 import type { StockAdjustmentReason } from "@/types/admin";
 import { z } from "zod";
 
@@ -76,9 +77,16 @@ export async function PATCH(
       adminName: "Super Admin",
     }).catch(() => {});
 
+    // Actualizar stock de la variante en Supabase
+    await updateVariantStockDb(variantId, newStock, delta);
+
+    revalidatePath("/catalogo");
+    revalidatePath("/api/products");
+    revalidatePath("/admin");
+
     return NextResponse.json({
       success: true,
-      message: "Existencias actualizadas correctamente",
+      message: "Existencias actualizadas correctamente en base de datos",
       auditRecord,
     });
   } catch {

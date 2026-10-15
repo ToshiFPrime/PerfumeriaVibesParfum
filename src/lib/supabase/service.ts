@@ -145,7 +145,7 @@ export async function getProductsDb(filters: GetProductsFilter = {}): Promise<Pr
 
       const { data, error } = await query;
 
-      if (!error && data && data.length > 0) {
+      if (!error && data) {
         const rows = data as unknown as DbProduct[];
         const transformed: Product[] = rows.map((row) => ({
           id: row.id,
@@ -326,7 +326,7 @@ export async function getBrandsDb(): Promise<PerfumeBrand[]> {
         .select("*")
         .order("name", { ascending: true });
 
-      if (!error && data && data.length > 0) {
+      if (!error && data) {
         const rows = data as unknown as DbBrand[];
         return rows.map((b) => ({
           id: b.id,
@@ -442,7 +442,7 @@ export async function getOrdersDb(): Promise<AdminOrder[]> {
         `)
         .order("created_at", { ascending: false });
 
-      if (!error && data && data.length > 0) {
+      if (!error && data) {
         const rows = data as unknown as DbOrder[];
         return rows.map((o) => {
           const cust = o.customer_info || {};
@@ -518,9 +518,251 @@ export async function updateOrderStatusDb(
   return true;
 }
 
-// ============================================================================
-// AUDITORÍA Y KÁRDEX DE STOCK
-// ============================================================================
+export async function createProductDb(product: Product): Promise<Product | null> {
+  if (isSupabaseConfigured()) {
+    try {
+      const slug = product.slug || product.name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+
+      // 1. Insertar el perfume maestro
+      const { data: prodData, error: prodErr } = await supabaseServer
+        .from("products")
+        .insert({
+          name: product.name,
+          brand: product.brand,
+          slug,
+          gender: product.gender,
+          concentration: product.concentration,
+          description: product.description,
+          olfactory_family: product.olfactoryFamily,
+          olfactory_pyramid: product.pyramid || { top: [], heart: [], base: [] },
+          images: product.images || [],
+          rating: product.rating || 5.0,
+          reviews_count: 0,
+          is_featured: product.isFeatured || false,
+          is_best_seller: product.isBestSeller || false,
+          is_new_arrival: product.isNewArrival ?? true,
+          is_on_sale: product.isOnSale || false,
+          tags: product.tags || [],
+          is_active: true,
+        })
+        .select()
+        .single();
+
+      if (prodErr || !prodData) {
+        console.error("Error al insertar producto en Supabase:", prodErr);
+        return null;
+      }
+
+      // 2. Insertar sus variantes (Decants 5ml, 10ml, Frascos)
+      const variantsToInsert = (product.variants || []).map((v, i) => ({
+        product_id: prodData.id,
+        milliliters: v.milliliters,
+        label: v.label,
+        price: v.price,
+        compare_at_price: v.compareAtPrice || null,
+        stock: v.stock,
+        sku: v.sku || `${slug.toUpperCase().slice(0, 4)}-${v.milliliters}ML-${i}`,
+      }));
+
+      const { data: varsData, error: varsErr } = await supabaseServer
+        .from("product_variants")
+        .insert(variantsToInsert)
+        .select();
+
+      if (varsErr) {
+        console.error("Error al insertar variantes en Supabase:", varsErr);
+      }
+
+      return {
+        ...product,
+        id: prodData.id,
+        variants: (varsData || []).map((v) => ({
+          id: v.id,
+          milliliters: v.milliliters,
+          label: v.label,
+          price: Number(v.price),
+          compareAtPrice: v.compare_at_price ? Number(v.compare_at_price) : undefined,
+          stock: v.stock,
+          sku: v.sku,
+        })),
+      };
+    } catch (err) {
+      console.error("createProductDb exception:", err);
+      return null;
+    }
+  }
+  return product;
+}
+
+export async function updateProductDb(id: string, updates: Partial<Product>): Promise<Product | null> {
+  if (isSupabaseConfigured()) {
+    try {
+      const payload: Record<string, unknown> = {
+        updated_at: new Date().toISOString(),
+      };
+      if (updates.name) payload.name = updates.name;
+      if (updates.brand) payload.brand = updates.brand;
+      if (updates.gender) payload.gender = updates.gender;
+      if (updates.concentration) payload.concentration = updates.concentration;
+      if (updates.description) payload.description = updates.description;
+      if (updates.olfactoryFamily) payload.olfactory_family = updates.olfactoryFamily;
+      if (updates.isActive !== undefined) payload.is_active = updates.isActive;
+
+      const { data, error } = await supabaseServer
+        .from("products")
+        .update(payload)
+        .or(`id.eq.${id},slug.eq.${id}`)
+        .select()
+        .maybeSingle();
+
+      if (!error && data) {
+        return getProductByIdOrSlugDb(data.id);
+      }
+    } catch (err) {
+      console.error("updateProductDb exception:", err);
+    }
+  }
+  return null;
+}
+
+export async function deleteProductDb(id: string): Promise<boolean> {
+  if (isSupabaseConfigured()) {
+    try {
+      // Soft-delete marcando is_active = false
+      const { error } = await supabaseServer
+        .from("products")
+        .update({ is_active: false, updated_at: new Date().toISOString() })
+        .or(`id.eq.${id},slug.eq.${id}`);
+      return !error;
+    } catch (err) {
+      console.error("deleteProductDb exception:", err);
+      return false;
+    }
+  }
+  return true;
+}
+
+export async function updateVariantStockDb(
+  variantId: string,
+  newStock?: number,
+  delta?: number
+): Promise<boolean> {
+  if (isSupabaseConfigured()) {
+    try {
+      if (newStock !== undefined) {
+        const { error } = await supabaseServer
+          .from("product_variants")
+          .update({ stock: Math.max(0, newStock) })
+          .eq("id", variantId);
+        return !error;
+      } else if (delta !== undefined) {
+        const { data } = await supabaseServer
+          .from("product_variants")
+          .select("stock")
+          .eq("id", variantId)
+          .single();
+        if (data) {
+          const current = Number(data.stock) || 0;
+          const updated = Math.max(0, current + delta);
+          const { error } = await supabaseServer
+            .from("product_variants")
+            .update({ stock: updated })
+            .eq("id", variantId);
+          return !error;
+        }
+      }
+    } catch (err) {
+      console.error("updateVariantStockDb exception:", err);
+      return false;
+    }
+  }
+  return true;
+}
+
+export async function createOrderDb(orderData: {
+  orderNumber: string;
+  customerName: string;
+  phone: string;
+  department: string;
+  city: string;
+  address?: string | null;
+  notes?: string | null;
+  items: Array<{
+    productId: string;
+    productName: string;
+    variantId: string;
+    variantLabel: string;
+    quantity: number;
+    unitPrice: number;
+  }>;
+  subtotal: number;
+  shippingCost: number;
+  total: number;
+}): Promise<AdminOrder | null> {
+  if (isSupabaseConfigured()) {
+    try {
+      const { data: orderRow, error: orderErr } = await supabaseServer
+        .from("orders")
+        .insert({
+          order_number: orderData.orderNumber,
+          customer_info: {
+            fullName: orderData.customerName,
+            phone: orderData.phone,
+            address: orderData.address || "",
+          },
+          shipping_info: {
+            city: orderData.city,
+            department: orderData.department,
+          },
+          subtotal: orderData.subtotal,
+          discount_amount: 0,
+          shipping_cost: orderData.shippingCost,
+          total: orderData.total,
+          payment_method: "whatsapp_qr",
+          status: "pending",
+          notes: orderData.notes,
+        })
+        .select()
+        .single();
+
+      if (orderErr || !orderRow) {
+        console.error("Error al insertar orden en Supabase:", orderErr);
+        return null;
+      }
+
+      // Insertar los items de la orden
+      if (orderData.items && orderData.items.length > 0) {
+        const itemsToInsert = orderData.items.map((it) => ({
+          order_id: orderRow.id,
+          product_name: it.productName,
+          variant_label: it.variantLabel,
+          quantity: it.quantity,
+          unit_price: it.unitPrice,
+          total_price: it.unitPrice * it.quantity,
+        }));
+
+        await supabaseServer.from("order_items").insert(itemsToInsert);
+      }
+
+      return {
+        id: orderRow.id,
+        orderNumber: orderRow.order_number,
+        customerName: orderData.customerName,
+        phone: orderData.phone,
+        city: orderData.city,
+        department: orderData.department,
+        itemsSummary: orderData.items.map((i) => `${i.productName} (${i.variantLabel}) x${i.quantity}`).join(", "),
+        total: orderData.total,
+        status: "Pendiente",
+        date: new Date().toLocaleDateString("es-BO"),
+      };
+    } catch (err) {
+      console.error("createOrderDb exception:", err);
+      return null;
+    }
+  }
+  return null;
+}
 
 export async function recordStockMovementDb(log: StockMovementLog): Promise<void> {
   if (isSupabaseConfigured()) {

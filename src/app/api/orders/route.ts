@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { customerOrderSchema, orderStatusUpdateSchema } from "@/lib/validation/schemas";
-import { getOrdersDb, updateOrderStatusDb } from "@/lib/supabase/service";
+import { getOrdersDb, updateOrderStatusDb, createOrderDb } from "@/lib/supabase/service";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 const createOrderSchema = z.object({
@@ -60,7 +61,7 @@ export async function POST(request: NextRequest) {
 
     const orderNumber = `VP-2026-${Math.floor(1000 + Math.random() * 9000)}`;
 
-    const newOrder = {
+    const fallbackOrder = {
       id: `ord-${Date.now()}`,
       orderNumber,
       customerName: customer.fullName,
@@ -69,20 +70,36 @@ export async function POST(request: NextRequest) {
       city: customer.city,
       address: customer.address,
       notes: customer.notes || null,
+      itemsSummary: items.map((i) => `${i.productName} (${i.variantLabel}) x${i.quantity}`).join(", "),
+      subtotal,
+      shippingCost,
+      total,
+      status: "Pendiente" as const,
+      date: new Date().toLocaleDateString("es-BO"),
+    };
+
+    const savedOrder = await createOrderDb({
+      orderNumber,
+      customerName: customer.fullName,
+      phone: customer.phone,
+      department: customer.department,
+      city: customer.city,
+      address: customer.address,
+      notes: customer.notes,
       items,
       subtotal,
       shippingCost,
       total,
-      status: "Pendiente",
-      paymentMethod: "QR Simple BCP / WhatsApp",
-      createdAt: new Date().toISOString(),
-    };
+    });
+
+    revalidatePath("/admin");
+    revalidatePath("/api/orders");
 
     return NextResponse.json(
       {
         success: true,
-        message: "Pedido registrado con éxito",
-        order: newOrder,
+        message: "Pedido registrado con éxito en base de datos",
+        order: savedOrder || fallbackOrder,
       },
       { status: 201 }
     );

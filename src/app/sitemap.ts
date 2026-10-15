@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
-import { MOCK_PERFUMES } from "@/lib/data/mockPerfumes";
+import { getProductsDb } from "@/lib/supabase/service";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://perfumeria-vibes-parfum.vercel.app";
 
   const staticPages: MetadataRoute.Sitemap = [
@@ -37,7 +37,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
   ];
 
-  const productPages: MetadataRoute.Sitemap = MOCK_PERFUMES.map((product) => ({
+  const allProducts = await getProductsDb();
+
+  const productPages: MetadataRoute.Sitemap = allProducts.map((product) => ({
     url: `${baseUrl}/producto/${product.slug}`,
     lastModified: new Date(),
     changeFrequency: "weekly",

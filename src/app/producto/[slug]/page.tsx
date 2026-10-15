@@ -1,8 +1,10 @@
 import React from "react";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { MOCK_PERFUMES } from "@/lib/data/mockPerfumes";
+import { getProductByIdOrSlugDb, getProductsDb } from "@/lib/supabase/service";
 import { ProductDetail } from "@/components/product/ProductDetail";
+
+export const dynamicParams = true;
 
 interface ProductPageProps {
   params: Promise<{
@@ -12,7 +14,7 @@ interface ProductPageProps {
 
 export async function generateMetadata({ params }: ProductPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const product = MOCK_PERFUMES.find((p) => p.slug === slug);
+  const product = await getProductByIdOrSlugDb(slug);
 
   if (!product) {
     return {
@@ -56,22 +58,24 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
 }
 
 export async function generateStaticParams() {
-  return MOCK_PERFUMES.map((product) => ({
+  const products = await getProductsDb();
+  return products.map((product) => ({
     slug: product.slug,
   }));
 }
 
 export default async function ProductDetailPage({ params }: ProductPageProps) {
   const { slug } = await params;
-  const product = MOCK_PERFUMES.find((p) => p.slug === slug);
+  const product = await getProductByIdOrSlugDb(slug);
 
   if (!product) {
     notFound();
   }
 
-  const relatedProducts = MOCK_PERFUMES.filter(
-    (p) => p.id !== product.id && p.olfactoryFamily === product.olfactoryFamily
-  );
+  const allInFamily = await getProductsDb({ family: product.olfactoryFamily });
+  const relatedProducts = allInFamily
+    .filter((p) => p.id !== product.id)
+    .slice(0, 4);
 
   const minPrice = Math.min(...product.variants.map((v) => v.price));
   const maxPrice = Math.max(...product.variants.map((v) => v.price));

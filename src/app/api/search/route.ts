@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { MOCK_PERFUMES } from "@/lib/data/mockPerfumes";
+import { getProductsDb } from "@/lib/supabase/service";
 
 // GET: Búsqueda rápida y liviana para autocompletado en barra de navegación
 export async function GET(request: NextRequest) {
@@ -13,19 +13,15 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  const matches = MOCK_PERFUMES.filter((p) => {
-    if (p.isActive === false) return false;
-    const allNotes = [...(p.pyramid?.top || []), ...(p.pyramid?.heart || []), ...(p.pyramid?.base || [])];
-    return (
-      p.name.toLowerCase().includes(q) ||
-      p.brand.toLowerCase().includes(q) ||
-      p.olfactoryFamily.toLowerCase().includes(q) ||
-      allNotes.some((note) => note.toLowerCase().includes(q))
-    );
-  })
+  const products = await getProductsDb({ q, limit: 6 });
+
+  const matches = products
+    .filter((p) => p.isActive !== false)
     .slice(0, 6)
     .map((p) => {
-      const minPrice = Math.min(...p.variants.map((v) => v.price));
+      const minPrice = p.variants && p.variants.length > 0
+        ? Math.min(...p.variants.map((v) => v.price))
+        : 0;
       return {
         id: p.id,
         name: p.name,

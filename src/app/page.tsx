@@ -9,11 +9,12 @@ import {
   TestimonialsSection,
   LuxuryPromiseSection,
 } from "@/components/home";
-import { MOCK_PERFUMES } from "@/lib/data/mockPerfumes";
+import { getProductsDb } from "@/lib/supabase/service";
 
-export default function HomePage() {
-  const featuredBestSellers = MOCK_PERFUMES.filter((p) => p.isBestSeller).slice(0, 3);
-  const featuredNiche = MOCK_PERFUMES.filter((p) => p.isFeatured && !p.isBestSeller).slice(0, 3);
+export default async function HomePage() {
+  const allProducts = await getProductsDb();
+  const featuredBestSellers = allProducts.filter((p) => p.isBestSeller && p.isActive !== false).slice(0, 3);
+  const featuredNiche = allProducts.filter((p) => p.isFeatured && !p.isBestSeller && p.isActive !== false).slice(0, 3);
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col">
